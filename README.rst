@@ -84,7 +84,7 @@ To build *gallery-dl* from a source checkout:
 
 .. code:: bash
 
-    git clone https://github.com/mikf/gallery-dl.git
+    git clone https://github.com/Donovoi/gallery-dl.git
     cd gallery-dl/
     python3 -m pip install --upgrade build
     make
