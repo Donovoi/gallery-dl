@@ -100,8 +100,7 @@ Python dependencies, run:
 
 .. code:: bash
 
-    uv venv
-    uv pip install --python .venv ".[extra,video]"
+    uv venv && uv pip install --python .venv ".[extra,video]"
 
 This installs *gallery-dl* with its ``extra`` and ``video`` extras. If you
 prefer the existing Make target, it is equivalent to:
@@ -110,8 +109,27 @@ prefer the existing Make target, it is equivalent to:
 
     make install-deps
 
-This only installs Python dependencies. External optional tools such as
-aria2c_, FFmpeg_, and mkvmerge_ still need to be installed separately.
+This installs all optional Python packages listed above, including support for
+SOCKS proxies, YAML/TOML configs, Brotli/Zstandard compression, PostgreSQL
+archives, Jinja templates, and ``yt-dlp``.
+
+To install the optional external tools together with the Python dependencies in
+one command from a source checkout, use one of these platform-specific
+commands:
+
+Debian / Ubuntu
+^^^^^^^^^^^^^^^^
+
+.. code:: bash
+
+    sudo apt-get update && sudo apt-get install -y aria2 ffmpeg mkvtoolnix && uv venv && uv pip install --python .venv ".[extra,video]"
+
+macOS / Homebrew
+^^^^^^^^^^^^^^^^
+
+.. code:: bash
+
+    brew install aria2 ffmpeg mkvtoolnix && uv venv && uv pip install --python .venv ".[extra,video]"
 
 To build a standalone executable, install PyInstaller and run:
 
