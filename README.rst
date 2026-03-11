@@ -77,6 +77,41 @@ To ensure these packages are up-to-date, run
     python3 -m pip install --upgrade pip setuptools wheel
 
 
+Build from Source
+-----------------
+
+To build *gallery-dl* from a source checkout:
+
+.. code:: bash
+
+    git clone https://github.com/mikf/gallery-dl.git
+    cd gallery-dl/
+    python3 -m pip install --upgrade build
+    make
+    python3 -m build
+
+This generates the auto-created man pages, shell completion files, and docs
+with :code:`make`, and then creates the source and wheel distributions in the
+``dist/`` directory.
+
+To install the project locally from the checkout instead of building release
+artifacts:
+
+.. code:: bash
+
+    python3 -m pip install .
+
+To build a standalone executable, install PyInstaller and run:
+
+.. code:: bash
+
+    python3 -m pip install pyinstaller requests[socks] yt-dlp[default] pyyaml
+    make
+    python3 scripts/pyinstaller.py
+
+This writes the executable to the ``dist/`` directory.
+
+
 Standalone Executable
 ---------------------
 
