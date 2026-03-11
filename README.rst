@@ -47,34 +47,28 @@ Installation
 ============
 
 
-Pip
----
+uv
+--
 
 The stable releases of *gallery-dl* are distributed on PyPI_ and can be
-easily installed or upgraded using pip_:
+easily installed using uv_:
 
 .. code:: bash
 
-    python3 -m pip install -U gallery-dl
+    uv tool install gallery-dl
+
+To upgrade an existing installation, run:
+
+.. code:: bash
+
+    uv tool upgrade gallery-dl
 
 Installing the latest dev version directly from GitHub can be done with
-pip_ as well:
+uv_ as well:
 
 .. code:: bash
 
-    python3 -m pip install -U --force-reinstall --no-deps https://github.com/mikf/gallery-dl/archive/master.tar.gz
-
-Omit :code:`--no-deps` if Requests_ hasn't been installed yet.
-
-Note: Windows users should use :code:`py -3` instead of :code:`python3`.
-
-It is advised to use the latest version of pip_,
-including the essential packages :code:`setuptools` and :code:`wheel`.
-To ensure these packages are up-to-date, run
-
-.. code:: bash
-
-    python3 -m pip install --upgrade pip setuptools wheel
+    uv tool install --from git+https://github.com/mikf/gallery-dl gallery-dl
 
 
 Build from Source
@@ -86,9 +80,8 @@ To build *gallery-dl* from a source checkout:
 
     git clone https://github.com/Donovoi/gallery-dl.git
     cd gallery-dl/
-    python3 -m pip install --upgrade build
     make
-    python3 -m build
+    uv build
 
 This generates the auto-created man pages, shell completion files, and docs
 with :code:`make`, and then creates the source and wheel distributions in the
@@ -99,21 +92,23 @@ artifacts:
 
 .. code:: bash
 
-    python3 -m pip install .
+    uv venv
+    uv pip install --python .venv .
 
 To install the project from a source checkout together with all optional
 Python dependencies, run:
 
 .. code:: bash
 
-    make install-deps
+    uv venv
+    uv pip install --python .venv ".[extra,video]"
 
-This installs *gallery-dl* with its ``extra`` and ``video`` extras and is
-equivalent to:
+This installs *gallery-dl* with its ``extra`` and ``video`` extras. If you
+prefer the existing Make target, it is equivalent to:
 
 .. code:: bash
 
-    python3 -m pip install ".[extra,video]"
+    make install-deps
 
 This only installs Python dependencies. External optional tools such as
 aria2c_, FFmpeg_, and mkvmerge_ still need to be installed separately.
@@ -122,9 +117,10 @@ To build a standalone executable, install PyInstaller and run:
 
 .. code:: bash
 
-    python3 -m pip install pyinstaller requests[socks] yt-dlp[default] pyyaml
+    uv venv
+    uv pip install --python .venv pyinstaller requests[socks] yt-dlp[default] pyyaml
     make
-    python3 scripts/pyinstaller.py
+    uv run --python .venv scripts/pyinstaller.py
 
 This writes the executable to the ``dist/`` directory.
 
@@ -557,7 +553,7 @@ To authenticate with a ``mastodon`` instance, run *gallery-dl* with
 
 .. _Python:     https://www.python.org/downloads/
 .. _PyPI:       https://pypi.org/
-.. _pip:        https://pip.pypa.io/en/stable/
+.. _uv:         https://docs.astral.sh/uv/
 .. _Requests:   https://requests.readthedocs.io/en/latest/
 .. _aria2c:     https://aria2.github.io/
 .. _FFmpeg:     https://www.ffmpeg.org/
