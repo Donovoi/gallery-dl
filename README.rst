@@ -93,7 +93,7 @@ artifacts:
 .. code:: bash
 
     uv venv
-    uv pip install .
+    uv pip install --python .venv .
 
 To install the project from a source checkout together with all optional
 Python dependencies, run:
@@ -101,10 +101,10 @@ Python dependencies, run:
 .. code:: bash
 
     uv venv
-    uv pip install ".[extra,video]"
+    uv pip install --python .venv ".[extra,video]"
 
-This installs *gallery-dl* with its ``extra`` and ``video`` extras and is
-equivalent to:
+This installs *gallery-dl* with its ``extra`` and ``video`` extras. If you
+prefer the existing Make target, it is equivalent to:
 
 .. code:: bash
 
@@ -118,9 +118,9 @@ To build a standalone executable, install PyInstaller and run:
 .. code:: bash
 
     uv venv
-    uv pip install pyinstaller requests[socks] yt-dlp[default] pyyaml
+    uv pip install --python .venv pyinstaller requests[socks] yt-dlp[default] pyyaml
     make
-    uv run python scripts/pyinstaller.py
+    uv run --python .venv scripts/pyinstaller.py
 
 This writes the executable to the ``dist/`` directory.
 
