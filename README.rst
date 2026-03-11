@@ -101,6 +101,23 @@ artifacts:
 
     python3 -m pip install .
 
+To install the project from a source checkout together with all optional
+Python dependencies, run:
+
+.. code:: bash
+
+    make install-deps
+
+This installs *gallery-dl* with its ``extra`` and ``video`` extras and is
+equivalent to:
+
+.. code:: bash
+
+    python3 -m pip install ".[extra,video]"
+
+This only installs Python dependencies. External optional tools such as
+aria2c_, FFmpeg_, and mkvmerge_ still need to be installed separately.
+
 To build a standalone executable, install PyInstaller and run:
 
 .. code:: bash
