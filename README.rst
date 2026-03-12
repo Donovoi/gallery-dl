@@ -379,8 +379,7 @@ while keeping *gallery-dl*'s normal extraction and naming logic.
 The built-in downloader remains the default, and *gallery-dl* falls back to
 it automatically for downloads that need direct response handling.
 
-1. Install ``aria2c`` so it is available on your ``PATH``
-2. Enable it in your config file:
+1. Enable it in your config file:
 
 .. code:: json
 
@@ -393,7 +392,9 @@ it automatically for downloads that need direct response handling.
     }
 
 If ``aria2c`` is not on your ``PATH``, you can also set the absolute path to
-the executable instead of ``true``.
+the executable instead of ``true``. When ``aria2c`` is enabled but missing,
+*gallery-dl* will also try to install it automatically before falling back to
+the built-in HTTP downloader.
 
 See
 `downloader.http.aria2c <https://gdl-org.github.io/docs/configuration.html#downloader-http-aria2c>`__

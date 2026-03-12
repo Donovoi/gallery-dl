@@ -10,6 +10,7 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from gallery_dl import ytdl, util, config, exception  # noqa E402
@@ -308,6 +309,19 @@ class Test_CommandlineArguments_YtDlp(Test_CommandlineArguments):
                 "firefox+keyring:profile::container"],
                "cookiesfrombrowser",
                ("firefox", "profile", "KEYRING", "container"))
+
+
+class TestImportModule(unittest.TestCase):
+
+    @patch("gallery_dl.ytdl.dependency.ensure_python_module")
+    def test_import_module_bootstraps_yt_dlp(self, ensure_python_module):
+        module = object()
+        ensure_python_module.return_value = module
+
+        result = ytdl.import_module(None)
+
+        self.assertIs(result, module)
+        ensure_python_module.assert_called_once_with("yt_dlp", "yt-dlp")
 
 
 class MockYtdlModule:
