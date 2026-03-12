@@ -40,6 +40,25 @@ class FakeJob():
         self.get_logger = logging.getLogger
 
 
+class MockAria2cProcess():
+
+    def __init__(self, returncode=0, stderr=b""):
+        self.returncode = returncode
+        self._stderr = stderr
+
+    def poll(self):
+        return self.returncode
+
+    def communicate(self):
+        return b"", self._stderr
+
+    def wait(self):
+        return self.returncode
+
+    def terminate(self):
+        return None
+
+
 class TestDownloaderModule(unittest.TestCase):
 
     @classmethod
@@ -324,20 +343,22 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
         self.assertIsNone(dl._aria2c,
                           "aria2c should be disabled after fallback")
 
-    @patch.object(http_downloader.subprocess, "run")
-    def test_aria2c_forwards_matching_cookies_and_timeout(self, run):
+    @patch.object(http_downloader.HttpDownloader, "_aria2c_filesize",
+                  return_value=None)
+    @patch.object(http_downloader.subprocess, "Popen")
+    def test_aria2c_forwards_matching_cookies_and_timeout(self, popen, _size):
         captured = {}
 
-        def side_effect(cmd, capture_output):
+        def side_effect(cmd, stdout, stderr):
             captured["cmd"] = cmd
             outdir = next(arg[6:] for arg in cmd if arg.startswith("--dir="))
             outfile = next(arg[6:] for arg in cmd if arg.startswith("--out="))
             os.makedirs(outdir, exist_ok=True)
             with open(os.path.join(outdir, outfile), "wb") as fp:
                 fp.write(DATA["jpg"])
-            return Mock(returncode=0, stderr=b"")
+            return MockAria2cProcess()
 
-        run.side_effect = side_effect
+        popen.side_effect = side_effect
 
         with tempfile.TemporaryDirectory() as tmpdir:
             dl, pathfmt = self._prepare_aria2c_download(tmpdir)
@@ -362,17 +383,19 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
         self.assertIn("--timeout=7", captured["cmd"])
         self.assertIn("--connect-timeout=7", captured["cmd"])
 
-    @patch.object(http_downloader.subprocess, "run")
-    def test_aria2c_removes_invalid_html_download(self, run):
-        def side_effect(cmd, capture_output):
+    @patch.object(http_downloader.HttpDownloader, "_aria2c_filesize",
+                  return_value=None)
+    @patch.object(http_downloader.subprocess, "Popen")
+    def test_aria2c_removes_invalid_html_download(self, popen, _size):
+        def side_effect(cmd, stdout, stderr):
             outdir = next(arg[6:] for arg in cmd if arg.startswith("--dir="))
             outfile = next(arg[6:] for arg in cmd if arg.startswith("--out="))
             os.makedirs(outdir, exist_ok=True)
             with open(os.path.join(outdir, outfile), "wb") as fp:
                 fp.write(DATA["html"])
-            return Mock(returncode=0, stderr=b"")
+            return MockAria2cProcess()
 
-        run.side_effect = side_effect
+        popen.side_effect = side_effect
 
         with tempfile.TemporaryDirectory() as tmpdir:
             dl, pathfmt = self._prepare_aria2c_download(

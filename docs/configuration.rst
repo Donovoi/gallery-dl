@@ -8146,7 +8146,10 @@ Description
     automatic fallback for everything else.
 
     When enabled, gallery-dl invokes ``aria2c`` as a subprocess for each
-    eligible download.  The following session context is forwarded
+    eligible download and keeps multiple eligible file downloads in flight in
+    parallel.  The terminal UI is refreshed on each aria2c status change to
+    show a dashboard with per-file URLs, progress percentages, transfer
+    speeds, and recent issues.  The following session context is forwarded
     automatically:
 
     - HTTP headers (including ``User-Agent``)
