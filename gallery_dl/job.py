@@ -32,6 +32,7 @@ from . import (
 from .extractor.message import Message
 stdout_write = output.stdout_write
 FLAGS = util.FLAGS
+ARIA2C_MAX_CONCURRENT_DOWNLOADS = 16
 
 
 class Job():
@@ -752,7 +753,7 @@ class DownloadJob(Job):
     def _submit_async_download(self, url, kwdict, downloader_instance):
         if self._async_executor is None:
             self._async_executor = concurrent.futures.ThreadPoolExecutor(
-                max_workers=16)
+                max_workers=ARIA2C_MAX_CONCURRENT_DOWNLOADS)
 
         pathfmt = path.PathFormat(self.extractor)
         pathfmt.set_directory(self._directory_kwdict.copy())

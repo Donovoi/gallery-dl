@@ -529,7 +529,7 @@ class TerminalOutput():
             else:
                 label = str(task_id)
             self._dashboard_issues.append((label, message))
-            del self._dashboard_issues[:-10]
+            self._dashboard_issues = self._dashboard_issues[-10:]
             self._dashboard_render()
 
     def dashboard_skip(self, task_id, path=None):

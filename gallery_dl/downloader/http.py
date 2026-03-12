@@ -20,6 +20,8 @@ from ssl import SSLError
 FLAGS = util.FLAGS
 ARIA2C_SPLIT = 16
 ARIA2C_MIN_SPLIT_SIZE = "1M"
+ARIA2C_POLL_INTERVAL = 0.5
+ARIA2C_POLL_FALLBACK = 0.25
 
 
 class HttpDownloader(DownloaderBase):
@@ -291,7 +293,9 @@ class HttpDownloader(DownloaderBase):
 
             bytes_total = self._aria2c_filesize(url, headers) \
                 if task_id is not None else None
-            poll_interval = min(self.progress or 0.5, 0.5) or 0.25
+            poll_interval = min(
+                self.progress or ARIA2C_POLL_INTERVAL, ARIA2C_POLL_INTERVAL
+            ) or ARIA2C_POLL_FALLBACK
             last_time = time.monotonic()
             last_bytes = pathfmt.part_size() or 0
             try:
