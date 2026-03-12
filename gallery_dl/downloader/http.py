@@ -15,7 +15,7 @@ import subprocess
 from requests import Request
 from requests.exceptions import RequestException, ConnectionError, Timeout
 from .common import DownloaderBase
-from .. import text, util, output, exception
+from .. import text, util, output, exception, dependency
 from ssl import SSLError
 FLAGS = util.FLAGS
 ARIA2C_SPLIT = 16
@@ -104,6 +104,8 @@ class HttpDownloader(DownloaderBase):
         aria2c = self.config("aria2c", False)
         if aria2c is True:
             aria2c = "aria2c"
+        if aria2c:
+            aria2c = dependency.ensure_aria2c(aria2c)
         self._aria2c = aria2c
 
     def download(self, url, pathfmt):
