@@ -606,7 +606,9 @@ def build_parser():
         dest="options", metavar="KEY=VALUE",
         action=ConfigParseAction, default=[],
         help=("Additional options. "
-              "Example: -o browser=firefox")   ,
+              "Examples: -o browser=firefox, "
+              "-o downloader.http.aria2c=true, or "
+              "-o downloader.http.aria2c=/usr/local/bin/aria2c"),
     )
     configuration.add_argument(
         "-c", "--config",
