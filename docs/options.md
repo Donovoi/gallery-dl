@@ -137,7 +137,10 @@
                                 Too Many Requests' response
 
 ## Configuration Options:
-    -o, --option KEY=VALUE      Additional options. Example: -o browser=firefox
+    -o, --option KEY=VALUE      Additional options. Examples: -o
+                                browser=firefox, -o
+                                downloader.http.aria2c=true, or -o
+                                downloader.http.aria2c=/usr/local/bin/aria2c
     -c, --config FILE           Additional configuration files in default
                                 format
     --config-json FILE          Additional configuration files in JSON format
