@@ -10,15 +10,15 @@
 
 import shlex
 import itertools
-from . import text, util, exception
+from . import text, util, exception, dependency
 
 
 def import_module(module_name):
     if module_name is None:
         try:
-            return __import__("yt_dlp")
+            return dependency.ensure_python_module("yt_dlp", "yt-dlp")
         except (ImportError, SyntaxError):
-            return __import__("youtube_dl")
+            return dependency.ensure_python_module("youtube_dl", "youtube-dl")
     return util.import_file(module_name)
 
 
