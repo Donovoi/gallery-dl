@@ -68,7 +68,7 @@ uv_ as well:
 
 .. code:: bash
 
-    uv tool install --from git+https://github.com/mikf/gallery-dl gallery-dl
+    uv tool install --from git+https://github.com/Donovoi/gallery-dl gallery-dl
 
 
 Build from Source
@@ -149,9 +149,9 @@ Standalone Executable
 Prebuilt executable files with a Python interpreter and
 required Python packages included are available for
 
-- `Windows <https://github.com/mikf/gallery-dl/releases/download/v1.31.5/gallery-dl.exe>`__
+- `Windows <https://github.com/Donovoi/gallery-dl/releases/download/v1.31.5/gallery-dl.exe>`__
   (Requires `Microsoft Visual C++ Redistributable Package (x86) <https://aka.ms/vs/17/release/vc_redist.x86.exe>`__)
-- `Linux   <https://github.com/mikf/gallery-dl/releases/download/v1.31.5/gallery-dl.bin>`__
+- `Linux   <https://github.com/Donovoi/gallery-dl/releases/download/v1.31.5/gallery-dl.bin>`__
 
 
 Nightly Builds
@@ -214,30 +214,30 @@ Using the Dockerfile in the repository:
 
 .. code:: bash
 
-    git clone https://github.com/mikf/gallery-dl.git
+    git clone https://github.com/Donovoi/gallery-dl.git
     cd gallery-dl/
     docker build -t gallery-dl:latest .
 
-Pulling image from `Docker Hub <https://hub.docker.com/r/mikf123/gallery-dl>`__:
+Pulling image from `Docker Hub <https://hub.docker.com/r/Donovoi123/gallery-dl>`__:
 
 .. code:: bash
 
-    docker pull mikf123/gallery-dl
-    docker tag mikf123/gallery-dl gallery-dl
+    docker pull Donovoi123/gallery-dl
+    docker tag Donovoi123/gallery-dl gallery-dl
 
-Pulling image from `GitHub Container Registry <https://github.com/mikf/gallery-dl/pkgs/container/gallery-dl>`__:
+Pulling image from `GitHub Container Registry <https://github.com/Donovoi/gallery-dl/pkgs/container/gallery-dl>`__:
 
 .. code:: bash
 
-    docker pull ghcr.io/mikf/gallery-dl
-    docker tag ghcr.io/mikf/gallery-dl gallery-dl
+    docker pull ghcr.io/Donovoi/gallery-dl
+    docker tag ghcr.io/Donovoi/gallery-dl gallery-dl
 
 Pulling *Nightly Build* images built from the latest commit by using the ``dev`` tag:
 
 .. code:: bash
 
-    docker pull mikf123/gallery-dl:dev
-    docker pull ghcr.io/mikf/gallery-dl:dev
+    docker pull Donovoi123/gallery-dl:dev
+    docker pull ghcr.io/Donovoi/gallery-dl:dev
 
 To run the container you will probably want to attach some directories on the host so that the config file and downloads can persist across runs.
 
@@ -596,8 +596,8 @@ To authenticate with a ``mastodon`` instance, run *gallery-dl* with
 .. |pypi| image:: https://img.shields.io/pypi/v/gallery-dl?logo=pypi&label=PyPI
     :target: https://pypi.org/project/gallery-dl/
 
-.. |build| image:: https://github.com/mikf/gallery-dl/actions/workflows/tests.yml/badge.svg
-    :target: https://github.com/mikf/gallery-dl/actions
+.. |build| image:: https://github.com/Donovoi/gallery-dl/actions/workflows/tests.yml/badge.svg
+    :target: https://github.com/Donovoi/gallery-dl/actions
 
 .. |gitter| image:: https://badges.gitter.im/gallery-dl/main.svg
     :target: https://gitter.im/gallery-dl/main
