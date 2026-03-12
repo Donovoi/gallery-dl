@@ -10,9 +10,11 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import io
+import tempfile
+import threading
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from gallery_dl import job, config, text  # noqa E402
@@ -106,6 +108,73 @@ class TestDownloadJob(TestJob):
         out = self._capture_stdout(extr)
         # no output if '_extractor' is overwritten (#8958)
         self.assertEqual(out, "11\n")
+
+    def test_aria2c_downloads_run_concurrently(self):
+        config.set(("output",), "mode", False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config.set((), "base-directory", tmpdir)
+
+            extr = TestExtractor.from_url("test:")
+            tjob = self.jobclass(extr)
+
+            started = []
+            started_lock = threading.Lock()
+            started_two = threading.Event()
+            release = threading.Event()
+
+            class MockAria2cDownloader():
+                _aria2c = "aria2c"
+
+                def _can_use_aria2c(self, kwdict):
+                    return True
+
+                def download(self, url, pathfmt):
+                    with started_lock:
+                        started.append(url)
+                        if len(started) >= 2:
+                            started_two.set()
+                    release.wait(2.0)
+                    with pathfmt.open("wb") as fp:
+                        fp.write(b"test")
+                    return True
+
+            downloader_instance = MockAria2cDownloader()
+            runner = threading.Thread(target=tjob.run)
+
+            with patch.object(
+                    tjob, "_aria2c_async_downloader",
+                    side_effect=lambda *args: downloader_instance):
+                runner.start()
+                try:
+                    self.assertTrue(started_two.wait(2.0))
+                finally:
+                    release.set()
+                runner.join(2.0)
+
+            self.assertFalse(runner.is_alive())
+            self.assertGreaterEqual(len(started), 2)
+            self.assertEqual(tjob.status, 0)
+
+    def test_aria2c_async_disabled_with_file_hooks(self):
+        extr = TestExtractor.from_url("test:")
+        tjob = self.jobclass(extr)
+        tjob.hooks = {"file": [object()]}
+        tjob._directory_kwdict = {
+            "category": "test_category",
+            "subcategory": "test_subcategory",
+        }
+
+        downloader_instance = Mock()
+        downloader_instance._aria2c = "aria2c"
+        downloader_instance._can_use_aria2c.return_value = True
+
+        with patch.object(tjob, "_create_downloader",
+                          return_value=downloader_instance):
+            result = tjob._aria2c_async_downloader(
+                "https://example.org/1.jpg", {"extension": "jpg"})
+
+        self.assertIsNone(result)
 
 
 class TestKeywordJob(TestJob):
