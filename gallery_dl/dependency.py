@@ -145,6 +145,10 @@ def _download_bytes(url):
 
 
 def _install_python_package(package_name):
+    if not _find_python_module("pip"):
+        if not _install_pip():
+            return False
+
     for use_user in (False, True):
         if use_user and (util.EXECUTABLE or sys.prefix != sys.base_prefix):
             continue
@@ -166,6 +170,26 @@ def _install_python_package(package_name):
             return True
 
     return False
+
+
+def _find_python_module(name):
+    try:
+        return importlib.util.find_spec(name)
+    except (AttributeError, ImportError, ValueError):
+        return None
+
+
+def _install_pip():
+    if not _find_python_module("ensurepip"):
+        return False
+
+    log.info("Attempting to install missing pip")
+    return _run_command([
+        sys.executable,
+        "-m",
+        "ensurepip",
+        "--default-pip",
+    ])
 
 
 def _run_command(cmd):

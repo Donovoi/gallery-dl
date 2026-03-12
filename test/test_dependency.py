@@ -10,7 +10,7 @@
 import os
 import sys
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOTDIR)
@@ -41,6 +41,51 @@ class TestDependency(unittest.TestCase):
             ["apt-get", "install", "-y", "aria2"],
             capture_output=True,
         )
+
+    @patch("gallery_dl.dependency._run_command")
+    @patch("gallery_dl.dependency.importlib.util.find_spec")
+    def test_install_python_package_bootstraps_missing_pip(
+            self, find_spec, run_command):
+        def find_spec_side_effect(name):
+            if name == "pip":
+                return None
+            if name == "ensurepip":
+                return object()
+            return object()
+
+        find_spec.side_effect = find_spec_side_effect
+        run_command.side_effect = (True, True)
+
+        result = dependency._install_python_package("yt-dlp")
+
+        self.assertTrue(result)
+        self.assertEqual(run_command.call_args_list, [
+            call([
+                sys.executable,
+                "-m",
+                "ensurepip",
+                "--default-pip",
+            ]),
+            call([
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "yt-dlp",
+            ]),
+        ])
+
+    @patch("gallery_dl.dependency._run_command")
+    @patch("gallery_dl.dependency.importlib.util.find_spec")
+    def test_install_python_package_requires_pip_or_ensurepip(
+            self, find_spec, run_command):
+        find_spec.return_value = None
+
+        result = dependency._install_python_package("yt-dlp")
+
+        self.assertFalse(result)
+        run_command.assert_not_called()
 
 
 if __name__ == "__main__":
