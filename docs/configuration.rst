@@ -8120,6 +8120,9 @@ Description
     Set to ``true`` to use ``aria2c`` from ``PATH``,
     or set to the absolute path of the ``aria2c`` binary.
 
+    If ``aria2c`` is enabled but missing, gallery-dl will try to install
+    it automatically before falling back to the built-in downloader.
+
     **Quick start**
 
     .. code:: json
@@ -8275,7 +8278,8 @@ Description
     The ``ytdl`` |Module|_ to import.
 
     Setting this to ``null`` will try to import ``"yt_dlp"``
-    followed by ``"youtube_dl"`` as fallback.
+    followed by ``"youtube_dl"`` as fallback, automatically installing the
+    missing Python package first when necessary.
 
 
 downloader.ytdl.outtmpl

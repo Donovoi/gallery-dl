@@ -212,15 +212,31 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
         dl = downloader.find("http")(self.job)
         self.assertEqual(dl._aria2c, False)
 
-    def test_aria2c_config_true_becomes_string(self):
+    @patch("gallery_dl.downloader.http.dependency.ensure_aria2c")
+    def test_aria2c_config_true_becomes_string(self, ensure_aria2c):
+        ensure_aria2c.return_value = "aria2c"
         config.set(("downloader", "http"), "aria2c", True)
         dl = downloader.find("http")(self.job)
         self.assertEqual(dl._aria2c, "aria2c")
+        ensure_aria2c.assert_called_once_with("aria2c")
 
-    def test_aria2c_config_custom_path(self):
+    @patch("gallery_dl.downloader.http.dependency.ensure_aria2c")
+    def test_aria2c_config_true_bootstraps_dependency(self, ensure_aria2c):
+        ensure_aria2c.return_value = "/tmp/aria2c"
+        config.set(("downloader", "http"), "aria2c", True)
+
+        dl = downloader.find("http")(self.job)
+
+        self.assertEqual(dl._aria2c, "/tmp/aria2c")
+        ensure_aria2c.assert_called_once_with("aria2c")
+
+    @patch("gallery_dl.downloader.http.dependency.ensure_aria2c")
+    def test_aria2c_config_custom_path(self, ensure_aria2c):
+        ensure_aria2c.return_value = "/usr/local/bin/aria2c"
         config.set(("downloader", "http"), "aria2c", "/usr/local/bin/aria2c")
         dl = downloader.find("http")(self.job)
         self.assertEqual(dl._aria2c, "/usr/local/bin/aria2c")
+        ensure_aria2c.assert_called_once_with("/usr/local/bin/aria2c")
 
     def test_can_use_aria2c_simple_get(self):
         self.assertTrue(self._can(extension="jpg"))
