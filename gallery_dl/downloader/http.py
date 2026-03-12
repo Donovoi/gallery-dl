@@ -20,6 +20,8 @@ from ssl import SSLError
 FLAGS = util.FLAGS
 ARIA2C_SPLIT = 16
 ARIA2C_MIN_SPLIT_SIZE = "1M"
+ARIA2C_POLL_INTERVAL = 0.5
+ARIA2C_POLL_FALLBACK = 0.25
 
 
 class HttpDownloader(DownloaderBase):
@@ -160,6 +162,25 @@ class HttpDownloader(DownloaderBase):
         if pathfmt.temppath == path:
             pathfmt.temppath = ""
 
+    def _aria2c_filesize(self, url, headers):
+        try:
+            response = self.session.request(
+                "HEAD", url,
+                headers=headers,
+                timeout=self.timeout,
+                proxies=self.proxies,
+                verify=self.verify,
+                allow_redirects=True,
+            )
+        except Exception:
+            return None
+        try:
+            if response.status_code >= 400:
+                return None
+            return text.parse_int(response.headers.get("Content-Length"), None)
+        finally:
+            response.close()
+
     def _download_impl_aria2c(self, url, pathfmt):
         """Download *url* using aria2c as the backend.
 
@@ -173,6 +194,7 @@ class HttpDownloader(DownloaderBase):
         tries = 0
         msg = ""
         kwdict = pathfmt.kwdict
+        task_id = kwdict.get("_aria2c_task_id")
         adjust_extension = kwdict.get(
             "_http_adjust_extension", self.adjust_extension)
 
@@ -264,9 +286,24 @@ class HttpDownloader(DownloaderBase):
 
             # Invoke aria2c
             self.downloading = True
-            self.out.start(pathfmt.path)
+            if task_id is None:
+                self.out.start(pathfmt.path)
+            else:
+                self.out.dashboard_start(task_id, url, pathfmt.path)
+
+            bytes_total = self._aria2c_filesize(url, headers) \
+                if task_id is not None else None
+            poll_interval = min(
+                self.progress or ARIA2C_POLL_INTERVAL, ARIA2C_POLL_INTERVAL
+            ) or ARIA2C_POLL_FALLBACK
+            last_time = time.monotonic()
+            last_bytes = pathfmt.part_size() or 0
             try:
-                proc = subprocess.run(cmd, capture_output=True)
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                )
             except FileNotFoundError:
                 self.downloading = False
                 self.log.warning(
@@ -279,11 +316,44 @@ class HttpDownloader(DownloaderBase):
                 return self._download_impl(url, pathfmt)
             except OSError as exc:
                 self.downloading = False
+                if task_id is not None:
+                    self.out.dashboard_issue(task_id, str(exc), True)
                 self.log.warning(exc)
                 return False
 
+            while True:
+                if FLAGS.DOWNLOAD is not None:
+                    proc.terminate()
+                    proc.wait()
+                    return FLAGS.process("DOWNLOAD")
+
+                if task_id is not None:
+                    now = time.monotonic()
+                    if now - last_time >= poll_interval:
+                        downloaded = pathfmt.part_size() or 0
+                        elapsed = now - last_time
+                        self.out.dashboard_progress(
+                            task_id,
+                            bytes_total,
+                            downloaded,
+                            int((downloaded - last_bytes) / elapsed)
+                            if elapsed > 0 else 0,
+                        )
+                        last_time = now
+                        last_bytes = downloaded
+
+                if proc.poll() is not None:
+                    break
+                time.sleep(poll_interval)
+
+            stderr = proc.communicate()[1]
+            if task_id is not None:
+                downloaded = pathfmt.part_size() or 0
+                self.out.dashboard_progress(
+                    task_id, bytes_total, downloaded, 0)
+
             if proc.returncode != 0:
-                stderr = proc.stderr.decode(errors="replace").strip()
+                stderr = stderr.decode(errors="replace").strip()
                 if stderr:
                     # Truncate to last 200 chars to avoid flooding the log
                     msg = f"aria2c: {stderr[-200:]}"
@@ -294,9 +364,14 @@ class HttpDownloader(DownloaderBase):
                 # 7 = unfinished downloads, 8 = server error response,
                 # 23 = too many redirects.
                 if proc.returncode in (2, 6, 7, 8, 23):
+                    if task_id is not None:
+                        self.out.dashboard_issue(task_id, msg)
                     continue
                 self.downloading = False
-                output.stderr_write("\n")
+                if task_id is not None:
+                    self.out.dashboard_issue(task_id, msg, True)
+                else:
+                    output.stderr_write("\n")
                 self.log.warning(msg)
                 return False
 
