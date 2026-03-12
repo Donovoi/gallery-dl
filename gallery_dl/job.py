@@ -33,6 +33,14 @@ from .extractor.message import Message
 stdout_write = output.stdout_write
 FLAGS = util.FLAGS
 ARIA2C_MAX_CONCURRENT_DOWNLOADS = 16
+ARIA2C_ASYNC_UNSAFE_HOOKS = {
+    "after",
+    "error",
+    "file",
+    "prepare",
+    "prepare-after",
+    "skip",
+}
 
 
 class Job():
@@ -742,6 +750,8 @@ class DownloadJob(Job):
     def _aria2c_async_downloader(self, url, kwdict):
         scheme = url[:url.find(":")]
         if scheme not in ("http", "https") or self._directory_kwdict is None:
+            return None
+        if self.hooks and any(hook in self.hooks for hook in ARIA2C_ASYNC_UNSAFE_HOOKS):
             return None
         instance = self._create_downloader(scheme)
         if (instance is None or

@@ -10,7 +10,7 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import io
 import tempfile
@@ -155,6 +155,26 @@ class TestDownloadJob(TestJob):
             self.assertFalse(runner.is_alive())
             self.assertGreaterEqual(len(started), 2)
             self.assertEqual(tjob.status, 0)
+
+    def test_aria2c_async_disabled_with_file_hooks(self):
+        extr = TestExtractor.from_url("test:")
+        tjob = self.jobclass(extr)
+        tjob.hooks = {"file": [object()]}
+        tjob._directory_kwdict = {
+            "category": "test_category",
+            "subcategory": "test_subcategory",
+        }
+
+        downloader_instance = Mock()
+        downloader_instance._aria2c = "aria2c"
+        downloader_instance._can_use_aria2c.return_value = True
+
+        with patch.object(tjob, "_create_downloader",
+                          return_value=downloader_instance):
+            result = tjob._aria2c_async_downloader(
+                "https://example.org/1.jpg", {"extension": "jpg"})
+
+        self.assertIsNone(result)
 
 
 class TestKeywordJob(TestJob):
