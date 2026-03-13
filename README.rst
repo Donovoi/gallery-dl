@@ -113,6 +113,16 @@ This installs all optional Python packages listed above, including support for
 SOCKS proxies, YAML/TOML configs, Brotli/Zstandard compression, PostgreSQL
 archives, Jinja templates, and ``yt-dlp``.
 
+To let *gallery-dl* install all optional README dependencies automatically,
+including ``aria2c``, ``ffmpeg``, and ``mkvmerge`` where supported, run:
+
+.. code:: bash
+
+    gallery-dl --install-deps
+
+This command is idempotent, skips dependencies that are already available, and
+prints progress while it installs missing items without prompting for input.
+
 To install the optional external tools together with the Python dependencies in
 one command from a source checkout, use one of these platform-specific
 commands:
