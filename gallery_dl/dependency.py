@@ -281,7 +281,7 @@ def _install_optional_executable(command):
 
     if command == "aria2c":
         result = ensure_aria2c(command)
-        success = bool(result and result != command)
+        success = _is_aria2c_installed(result, command)
     else:
         success = _install_system_package(command)
 
@@ -293,8 +293,9 @@ def _install_optional_executable(command):
 
 
 def _install_optional_python_package(dep):
-    if skip := dep.get("skip", _return_none)():
-        _announce(f"{dep['label']}: skipped ({skip})")
+    skip_reason = dep.get("skip", lambda: None)()
+    if skip_reason:
+        _announce(f"{dep['label']}: skipped ({skip_reason})")
         return True
 
     if any(_find_python_module(name) for name in dep["modules"]):
@@ -339,6 +340,10 @@ def _install_system_package(name):
     return False
 
 
+def _is_aria2c_installed(result, executable_name):
+    return bool(result and result != executable_name)
+
+
 def _install_python_package(package_name):
     if not _find_python_module("pip"):
         if not _install_pip():
@@ -372,10 +377,6 @@ def _find_python_module(name):
         return importlib.util.find_spec(name)
     except (AttributeError, ImportError, ValueError):
         return None
-
-
-def _return_none():
-    return None
 
 
 def _install_pip():
