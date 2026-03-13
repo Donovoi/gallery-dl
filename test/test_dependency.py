@@ -87,6 +87,71 @@ class TestDependency(unittest.TestCase):
         self.assertFalse(result)
         run_command.assert_not_called()
 
+    @patch("gallery_dl.dependency._announce")
+    @patch("gallery_dl.dependency._install_python_package")
+    @patch("gallery_dl.dependency._find_python_module")
+    @patch("gallery_dl.dependency._install_system_package")
+    @patch("gallery_dl.dependency.ensure_aria2c")
+    @patch("gallery_dl.dependency._find_executable")
+    def test_install_optional_dependencies_installs_missing_dependencies(
+            self, find_executable, ensure_aria2c,
+            install_system_package, find_python_module,
+            install_python_package, announce):
+        find_executable.return_value = None
+        ensure_aria2c.return_value = "/usr/bin/aria2c"
+        install_system_package.return_value = True
+        find_python_module.return_value = None
+        install_python_package.return_value = True
+
+        with patch.object(dependency.sys, "platform", "linux"), \
+                patch.object(dependency.sys, "version_info", (3, 10, 0)):
+            result = dependency.install_optional_dependencies()
+
+        self.assertTrue(result)
+        ensure_aria2c.assert_called_once_with("aria2c")
+        self.assertEqual(install_system_package.call_args_list, [
+            call("ffmpeg"),
+            call("mkvmerge"),
+        ])
+        self.assertEqual(install_python_package.call_args_list, [
+            call("yt-dlp[default]"),
+            call("requests[socks]"),
+            call("brotli"),
+            call("zstandard"),
+            call("pyyaml"),
+            call("toml"),
+            call("secretstorage"),
+            call("psycopg[binary]"),
+            call("truststore"),
+            call("jinja2"),
+        ])
+        announce.assert_any_call("Installing optional dependencies listed in the README")
+        announce.assert_any_call("Optional dependency installation finished")
+
+    @patch("gallery_dl.dependency._announce")
+    @patch("gallery_dl.dependency._install_python_package")
+    @patch("gallery_dl.dependency._find_python_module")
+    @patch("gallery_dl.dependency._install_system_package")
+    @patch("gallery_dl.dependency.ensure_aria2c")
+    @patch("gallery_dl.dependency._find_executable")
+    def test_install_optional_dependencies_is_idempotent(
+            self, find_executable, ensure_aria2c,
+            install_system_package, find_python_module,
+            install_python_package, announce):
+        find_executable.return_value = "/usr/bin/tool"
+        find_python_module.return_value = object()
+
+        with patch.object(dependency.sys, "platform", "linux"), \
+                patch.object(dependency.sys, "version_info", (3, 10, 0)):
+            result = dependency.install_optional_dependencies()
+
+        self.assertTrue(result)
+        ensure_aria2c.assert_not_called()
+        install_system_package.assert_not_called()
+        install_python_package.assert_not_called()
+        announce.assert_any_call("aria2c: already installed")
+        announce.assert_any_call("Optional dependency installation finished")
+
 
 if __name__ == "__main__":
     unittest.main()
