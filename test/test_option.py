@@ -10,6 +10,7 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOTDIR)
@@ -26,3 +27,14 @@ class TestOption(unittest.TestCase):
             "-o downloader.http.aria2c=/usr/local/bin/aria2c",
             help_text,
         )
+        self.assertIn("--install-deps", help_text)
+
+    @patch("gallery_dl.option.dependency.install_optional_dependencies")
+    def test_install_deps_exits_after_install(self, install_optional_dependencies):
+        install_optional_dependencies.return_value = True
+
+        with self.assertRaises(SystemExit) as exc:
+            option.build_parser().parse_args(["--install-deps"])
+
+        self.assertEqual(exc.exception.code, 0)
+        install_optional_dependencies.assert_called_once_with()

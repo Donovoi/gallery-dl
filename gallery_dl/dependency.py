@@ -24,14 +24,132 @@ from . import cache, util
 
 log = logging.getLogger("dependency")
 ARIA2_RELEASE_API = "https://api.github.com/repos/aria2/aria2/releases/latest"
-ARIA2_PACKAGE_MANAGERS = (
-    ("apt-get", True, ("install", "-y", "aria2")),
-    ("dnf"    , True, ("install", "-y", "aria2")),
-    ("yum"    , True, ("install", "-y", "aria2")),
-    ("pacman" , True, ("-S", "--noconfirm", "aria2")),
-    ("zypper" , True, ("--non-interactive", "install", "aria2")),
-    ("apk"    , True, ("add", "aria2")),
-    ("brew"   , False, ("install", "aria2")),
+SYSTEM_PACKAGE_MANAGERS = (
+    ("apt-get", True, ("install", "-y")),
+    ("dnf"    , True, ("install", "-y")),
+    ("yum"    , True, ("install", "-y")),
+    ("pacman" , True, ("-S", "--noconfirm")),
+    ("zypper" , True, ("--non-interactive", "install")),
+    ("apk"    , True, ("add",)),
+    ("brew"   , False, ("install",)),
+)
+SYSTEM_PACKAGES = {
+    "aria2c"  : {
+        "apt-get": "aria2",
+        "dnf"    : "aria2",
+        "yum"    : "aria2",
+        "pacman" : "aria2",
+        "zypper" : "aria2",
+        "apk"    : "aria2",
+        "brew"   : "aria2",
+    },
+    "ffmpeg"  : {
+        "apt-get": "ffmpeg",
+        "dnf"    : "ffmpeg",
+        "yum"    : "ffmpeg",
+        "pacman" : "ffmpeg",
+        "zypper" : "ffmpeg",
+        "apk"    : "ffmpeg",
+        "brew"   : "ffmpeg",
+    },
+    "mkvmerge": {
+        "apt-get": "mkvtoolnix",
+        "dnf"    : "mkvtoolnix",
+        "yum"    : "mkvtoolnix",
+        "pacman" : "mkvtoolnix-cli",
+        "zypper" : "mkvtoolnix",
+        "apk"    : "mkvtoolnix",
+        "brew"   : "mkvtoolnix",
+    },
+}
+WINDOWS_PACKAGE_MANAGERS = (
+    ("winget", False, (
+        "install",
+        "--silent",
+        "--disable-interactivity",
+        "--accept-package-agreements",
+        "--accept-source-agreements",
+        "--id",
+    )),
+    ("choco" , False, ("install", "-y")),
+)
+WINDOWS_PACKAGES = {
+    "aria2c"  : {
+        "winget": "aria2.aria2",
+        "choco" : "aria2",
+    },
+    "ffmpeg"  : {
+        "winget": "Gyan.FFmpeg",
+        "choco" : "ffmpeg",
+    },
+    "mkvmerge": {
+        "winget": "MoritzBunkus.MKVToolNix",
+        "choco" : "mkvtoolnix",
+    },
+}
+OPTIONAL_PYTHON_PACKAGES = (
+    {
+        "label"  : "yt-dlp or youtube-dl",
+        "modules": ("yt_dlp", "youtube_dl"),
+        "package": "yt-dlp[default]",
+    },
+    {
+        "label"  : "PySocks",
+        "modules": ("socks",),
+        "package": "requests[socks]",
+    },
+    {
+        "label"  : "brotli or brotlicffi",
+        "modules": ("brotli", "brotlicffi"),
+        "package": "brotli",
+    },
+    {
+        "label"  : "zstandard",
+        "modules": ("zstandard",),
+        "package": "zstandard",
+    },
+    {
+        "label"  : "PyYAML",
+        "modules": ("yaml",),
+        "package": "pyyaml",
+    },
+    {
+        "label"  : "toml",
+        "modules": ("tomllib", "toml"),
+        "package": "toml",
+        "skip"   : lambda: (
+            "provided by the standard library on Python 3.11+"
+            if sys.version_info >= (3, 11) else None
+        ),
+    },
+    {
+        "label"  : "SecretStorage",
+        "modules": ("secretstorage",),
+        "package": "secretstorage",
+        "skip"   : lambda: (
+            None if sys.platform.startswith("linux")
+            else "not supported on this platform"
+        ),
+    },
+    {
+        "label"  : "Psycopg",
+        "modules": ("psycopg",),
+        "package": "psycopg[binary]",
+    },
+    {
+        "label"  : "truststore",
+        "modules": ("truststore",),
+        "package": "truststore",
+        "skip"   : lambda: (
+            None if sys.version_info >= (3, 10)
+            else "requires Python 3.10+"
+        ),
+    },
+    {
+        "label"  : "Jinja",
+        "modules": ("jinja2",),
+        "package": "jinja2",
+    },
 )
 
 
@@ -71,27 +189,32 @@ def ensure_python_module(import_name, package_name):
     return importlib.import_module(import_name)
 
 
+def install_optional_dependencies():
+    """Install optional README dependencies in a non-interactive manner."""
+    success = True
+
+    _announce("Installing optional dependencies listed in the README")
+
+    for executable in ("aria2c", "ffmpeg", "mkvmerge"):
+        success = _install_optional_executable(executable) and success
+
+    for dep in OPTIONAL_PYTHON_PACKAGES:
+        success = _install_optional_python_package(dep) and success
+
+    if success:
+        _announce("Optional dependency installation finished")
+    else:
+        _announce("Optional dependency installation finished with failures")
+    return success
+
+
 def _find_executable(command):
     return shutil.which(command)
 
 
 def _install_aria2c_package():
-    sudo = shutil.which("sudo")
-    needs_root = hasattr(os, "geteuid") and os.geteuid() != 0
-
-    for manager, require_root, args in ARIA2_PACKAGE_MANAGERS:
-        if not shutil.which(manager):
-            continue
-
-        cmd = [manager, *args]
-        if require_root and needs_root:
-            if not sudo:
-                continue
-            cmd = [sudo, "-n", *cmd]
-
-        if _run_command(cmd):
-            return _find_executable("aria2c")
-
+    if _install_system_package("aria2c"):
+        return _find_executable("aria2c")
     return None
 
 
@@ -142,6 +265,83 @@ def _download_bytes(url):
     request = Request(url, headers={"User-Agent": util.USERAGENT_GALLERYDL})
     with urlopen(request) as response:
         return response.read()
+
+
+def _announce(message):
+    log.info(message)
+    sys.stderr.write(message + "\n")
+
+
+def _install_optional_executable(command):
+    if _find_executable(command):
+        _announce(f"{command}: already installed")
+        return True
+
+    _announce(f"{command}: installing")
+
+    if command == "aria2c":
+        result = ensure_aria2c(command)
+        success = _is_aria2c_installed(result, command)
+    else:
+        success = _install_system_package(command)
+
+    if success:
+        _announce(f"{command}: installed")
+    else:
+        _announce(f"{command}: unable to install automatically")
+    return success
+
+
+def _install_optional_python_package(dep):
+    skip_reason = dep.get("skip", lambda: None)()
+    if skip_reason:
+        _announce(f"{dep['label']}: skipped ({skip_reason})")
+        return True
+
+    if any(_find_python_module(name) for name in dep["modules"]):
+        _announce(f"{dep['label']}: already installed")
+        return True
+
+    _announce(f"{dep['label']}: installing")
+    if _install_python_package(dep["package"]):
+        _announce(f"{dep['label']}: installed")
+        return True
+
+    _announce(f"{dep['label']}: unable to install automatically")
+    return False
+
+
+def _install_system_package(name):
+    if util.WINDOWS:
+        managers = WINDOWS_PACKAGE_MANAGERS
+        packages = WINDOWS_PACKAGES[name]
+        sudo = None
+        needs_root = False
+    else:
+        managers = SYSTEM_PACKAGE_MANAGERS
+        packages = SYSTEM_PACKAGES[name]
+        sudo = shutil.which("sudo")
+        needs_root = hasattr(os, "geteuid") and os.geteuid() != 0
+
+    for manager, require_root, args in managers:
+        package = packages.get(manager)
+        if not package or not shutil.which(manager):
+            continue
+
+        cmd = [manager, *args, package]
+        if require_root and needs_root:
+            if not sudo:
+                continue
+            cmd = [sudo, "-n", *cmd]
+
+        if _run_command(cmd):
+            return True
+
+    return False
+
+
+def _is_aria2c_installed(result, executable_name):
+    return bool(result and result != executable_name)
 
 
 def _install_python_package(package_name):
