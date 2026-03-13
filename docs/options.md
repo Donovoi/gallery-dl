@@ -22,6 +22,7 @@
 ## General Options:
     -h, --help                  Print this help message and exit
     --version                   Print program version and exit
+    --install-deps              Install optional README dependencies and exit
     -f, --filename FORMAT       Filename format string for downloaded files
                                 ('/O' for "original" filenames)
     -d, --destination PATH      Target location for file downloads
