@@ -103,8 +103,8 @@ class TestDependency(unittest.TestCase):
         find_python_module.return_value = None
         install_python_package.return_value = True
 
-        with patch.object(dependency.sys, "platform", "linux"), \
-                patch.object(dependency.sys, "version_info", (3, 10, 0)):
+        with patch("gallery_dl.dependency.sys.platform", "linux"), \
+                patch("gallery_dl.dependency.sys.version_info", (3, 10, 0)):
             result = dependency.install_optional_dependencies()
 
         self.assertTrue(result)
@@ -141,8 +141,8 @@ class TestDependency(unittest.TestCase):
         find_executable.return_value = "/usr/bin/tool"
         find_python_module.return_value = object()
 
-        with patch.object(dependency.sys, "platform", "linux"), \
-                patch.object(dependency.sys, "version_info", (3, 10, 0)):
+        with patch("gallery_dl.dependency.sys.platform", "linux"), \
+                patch("gallery_dl.dependency.sys.version_info", (3, 10, 0)):
             result = dependency.install_optional_dependencies()
 
         self.assertTrue(result)
@@ -151,6 +151,14 @@ class TestDependency(unittest.TestCase):
         install_python_package.assert_not_called()
         announce.assert_any_call("aria2c: already installed")
         announce.assert_any_call("Optional dependency installation finished")
+
+    def test_is_aria2c_installed(self):
+        self.assertTrue(dependency._is_aria2c_installed(
+            "/usr/bin/aria2c", "aria2c"))
+        self.assertFalse(dependency._is_aria2c_installed(
+            "aria2c", "aria2c"))
+        self.assertFalse(dependency._is_aria2c_installed(
+            None, "aria2c"))
 
 
 if __name__ == "__main__":
