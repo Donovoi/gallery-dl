@@ -445,6 +445,15 @@ class PipeOutput(NullOutput):
 
 
 class TerminalOutput():
+    _DASHBOARD_LABELS = {
+        "queued" : "QUE",
+        "running": "RUN",
+        "retry"  : "TRY",
+        "done"   : "DONE",
+        "skip"   : "SKIP",
+        "error"  : "ERR",
+    }
+
 
     def __init__(self):
         if shorten := config.get(("output",), "shorten", True):
@@ -548,11 +557,49 @@ class TerminalOutput():
                 task["status"] = "done"
                 self._dashboard_render()
 
+    def _dashboard_summary(self, status, count):
+        return f"{self._dashboard_label(status)}:{count}"
+
+    def _dashboard_label(self, status):
+        return self._DASHBOARD_LABELS.get(status, status[:3].upper())
+
+    def _dashboard_downloaded(self, total, downloaded):
+        return min(downloaded, total) if total else downloaded
+
+    def _dashboard_filled(self, total, downloaded, width):
+        if not total or not downloaded:
+            return 0
+        return min(width, max(1, downloaded * width // total))
+
+    def _dashboard_bar(self, status, total, downloaded, width=10):
+        if not total:
+            return "-" * width
+        downloaded = self._dashboard_downloaded(total, downloaded)
+        filled = self._dashboard_filled(total, downloaded, width)
+        return "#" * filled + "-" * (width - filled)
+
+    def _dashboard_title(self, text):
+        return text
+
+    def _dashboard_percent(self, total, downloaded):
+        if not total:
+            return " --%"
+        downloaded = self._dashboard_downloaded(total, downloaded)
+        return f"{downloaded * 100 // total:>3}%"
+
+    def _dashboard_show_url(self, task, status):
+        return (
+            task["path"] and task["path"] != task["url"] and
+            (status in ("queued", "retry", "error") or task["issue"])
+        )
+
+    def _dashboard_show_task(self, status):
+        return status in ("queued", "running", "retry", "error")
+
     def _dashboard_render(self):
         active = done = failed = skipped = 0
         lines = [
-            "gallery-dl aria2c dashboard",
-            "",
+            self._dashboard_title("gallery-dl aria2c dashboard"),
         ]
 
         for task in self._dashboard_tasks.values():
@@ -567,31 +614,30 @@ class TerminalOutput():
                 failed += 1
 
         lines.append(
-            f"active: {active}  done: {done}  skipped: {skipped}  failed: {failed}")
+            "  ".join((
+                self._dashboard_summary("running", active),
+                self._dashboard_summary("done", done),
+                self._dashboard_summary("skip", skipped),
+                self._dashboard_summary("error", failed),
+            )))
         lines.append("")
 
         for task in self._dashboard_tasks.values():
             status = task["status"]
+            if not self._dashboard_show_task(status):
+                continue
             total = task["bytes_total"]
             downloaded = task["bytes_downloaded"]
             speed = util.format_value(task["bytes_per_second"])
-            if total:
-                percent = f"{downloaded * 100 // total:>3}%"
-            else:
-                percent = " --%"
-            label = {
-                "queued": "QUE",
-                "running": "RUN",
-                "retry" : "TRY",
-                "done"  : "DONE",
-                "skip"  : "SKIP",
-                "error" : "ERR",
-            }[status]
+            percent = self._dashboard_percent(total, downloaded)
+            label = self._dashboard_label(status)
+            bar = self._dashboard_bar(status, total, downloaded)
             target = task["path"] or task["url"]
             lines.append(
                 self.shorten(
-                    f"[{label}] {percent} {speed:>7}B/s {target}"))
-            lines.append(self.shorten(f"      {task['url']}"))
+                    f"[{label}] {percent} {bar} {speed:>7}B/s {target}"))
+            if self._dashboard_show_url(task, status):
+                lines.append(self.shorten(f"      {task['url']}"))
             if task["issue"]:
                 lines.append(self.shorten(f"      issue: {task['issue']}"))
 
@@ -604,6 +650,14 @@ class TerminalOutput():
 
 
 class ColorOutput(TerminalOutput):
+    _DASHBOARD_SYMBOLS = {
+        "queued" : "…",
+        "running": "▶",
+        "retry"  : "↻",
+        "done"   : "✓",
+        "skip"   : "↷",
+        "error"  : "✕",
+    }
 
     def __init__(self):
         TerminalOutput.__init__(self)
@@ -614,6 +668,16 @@ class ColorOutput(TerminalOutput):
 
         self.color_skip = f"\x1b[{colors.get('skip', '2')}m"
         self.color_success = f"\r\x1b[{colors.get('success', '1;32')}m"
+        self._dashboard_colors = {
+            "title"  : colors.get("info", "1;37"),
+            "queued" : colors.get("queued", "0;36"),
+            "running": colors.get("running", "1;34"),
+            "retry"  : colors.get("warning", "1;33"),
+            "done"   : colors.get("success", "1;32"),
+            "skip"   : colors.get("skip", "2"),
+            "error"  : colors.get("error", "1;31"),
+            "muted"  : colors.get("debug", "0;37"),
+        }
 
     def start(self, path):
         stdout_write_flush(self.shorten(path))
@@ -623,6 +687,32 @@ class ColorOutput(TerminalOutput):
 
     def success(self, path):
         stdout_write(f"{self.color_success}{self.shorten(path)}\x1b[0m\n")
+
+    def _dashboard_color(self, key, text):
+        color = self._dashboard_colors.get(key)
+        return f"\x1b[{color}m{text}\x1b[0m" if color else text
+
+    def _dashboard_summary(self, status, count):
+        symbol = self._DASHBOARD_SYMBOLS.get(status, self._dashboard_label(status))
+        return self._dashboard_color(status, f"{symbol} {count}")
+
+    def _dashboard_label(self, status):
+        return self._dashboard_color(
+            status, self._DASHBOARD_SYMBOLS.get(status, self._DASHBOARD_LABELS.get(status, status[:3].upper()))
+        )
+
+    def _dashboard_bar(self, status, total, downloaded, width=10):
+        if not total:
+            return self._dashboard_color("muted", "·" * width)
+        downloaded = self._dashboard_downloaded(total, downloaded)
+        filled = self._dashboard_filled(total, downloaded, width)
+        return (
+            self._dashboard_color(status, "█" * filled) +
+            self._dashboard_color("muted", "░" * (width - filled))
+        )
+
+    def _dashboard_title(self, text):
+        return self._dashboard_color("title", text)
 
 
 class CustomOutput():
