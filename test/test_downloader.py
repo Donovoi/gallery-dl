@@ -432,6 +432,7 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
 
     def test_aria2c_exit_code_messages_cover_documented_codes(self):
         self.assertEqual(set(http_downloader.ARIA2C_EXIT_MESSAGES), set(range(1, 33)))
+        self.assertEqual(len(http_downloader.ARIA2C_EXIT_MESSAGES), 32)
         self.assertEqual(
             http_downloader.ARIA2C_EXIT_MESSAGES[2],
             "time out occurred",
