@@ -10,6 +10,7 @@
 import os
 import sys
 import unittest
+import concurrent.futures
 from unittest.mock import Mock, patch
 
 import io
@@ -175,6 +176,41 @@ class TestDownloadJob(TestJob):
                 "https://example.org/1.jpg", {"extension": "jpg"})
 
         self.assertIsNone(result)
+
+    def test_aria2c_executor_uses_downloader_limit(self):
+        extr = TestExtractor.from_url("test:")
+        tjob = self.jobclass(extr)
+        tjob._directory_kwdict = {
+            "category": "test_category",
+            "subcategory": "test_subcategory",
+        }
+
+        captured = {}
+        future = concurrent.futures.Future()
+        future.set_result(None)
+
+        class MockExecutor():
+            def __init__(self, max_workers):
+                captured["max_workers"] = max_workers
+
+            def submit(self, fn, *args, **kwargs):
+                return future
+
+            def shutdown(self):
+                return None
+
+        downloader_instance = Mock()
+        downloader_instance.max_concurrent_downloads = 3
+
+        with patch("gallery_dl.job.concurrent.futures.ThreadPoolExecutor",
+                   MockExecutor):
+            tjob._submit_async_download(
+                "https://example.org/1.jpg",
+                {"extension": "jpg"},
+                downloader_instance,
+            )
+
+        self.assertEqual(captured["max_workers"], 3)
 
 
 class TestKeywordJob(TestJob):

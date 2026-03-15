@@ -19,6 +19,7 @@ from .. import text, util, output, exception, dependency
 from ssl import SSLError
 FLAGS = util.FLAGS
 ARIA2C_SPLIT = 16
+ARIA2C_MAX_CONCURRENT_DOWNLOADS = 16
 ARIA2C_MIN_SPLIT_SIZE = "1M"
 ARIA2C_POLL_INTERVAL = 0.5
 ARIA2C_POLL_FALLBACK = 0.25
@@ -65,6 +66,7 @@ class HttpDownloader(DownloaderBase):
         DownloaderBase.__init__(self, job)
         extractor = job.extractor
         self.downloading = False
+        self.max_concurrent_downloads = ARIA2C_MAX_CONCURRENT_DOWNLOADS
 
         self.adjust_extension = self.config("adjust-extensions", True)
         self.chunk_size = self.config("chunk-size", 32768)
@@ -143,6 +145,16 @@ class HttpDownloader(DownloaderBase):
         if aria2c:
             aria2c = dependency.ensure_aria2c(aria2c)
         self._aria2c = aria2c
+
+        value = self.config("max-concurrent-downloads")
+        if value is not None:
+            try:
+                value = max(1, int(value))
+            except (TypeError, ValueError):
+                self.log.warning(
+                    "Invalid max-concurrent-downloads value (%r)", value)
+            else:
+                self.max_concurrent_downloads = value
 
     def download(self, url, pathfmt):
         try:
