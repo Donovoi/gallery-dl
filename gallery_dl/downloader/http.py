@@ -22,6 +22,40 @@ ARIA2C_SPLIT = 16
 ARIA2C_MIN_SPLIT_SIZE = "1M"
 ARIA2C_POLL_INTERVAL = 0.5
 ARIA2C_POLL_FALLBACK = 0.25
+ARIA2C_EXIT_MESSAGES = {
+    1 : "unknown error occurred",
+    2 : "time out occurred",
+    3 : "a resource was not found",
+    4 : "the specified number of 'resource not found' errors occurred",
+    5 : "a download aborted because download speed was too slow",
+    6 : "network problem occurred",
+    7 : "there were unfinished downloads",
+    8 : "the remote server did not support resume when it was required",
+    9 : "there was not enough disk space available",
+    10: "piece length differed from the .aria2 control file",
+    11: "aria2 was already downloading the same file",
+    12: "aria2 was already downloading the same info hash torrent",
+    13: "the file already existed",
+    14: "renaming the file failed",
+    15: "aria2 could not open the existing file",
+    16: "aria2 could not create a new file or truncate the existing file",
+    17: "a file I/O error occurred",
+    18: "aria2 could not create the directory",
+    19: "name resolution failed",
+    20: "aria2 could not parse the Metalink document",
+    21: "an FTP command failed",
+    22: "the HTTP response header was bad or unexpected",
+    23: "too many redirects occurred",
+    24: "HTTP authorization failed",
+    25: "aria2 could not parse the bencoded file (usually '.torrent')",
+    26: "the '.torrent' file was corrupted or missing required information",
+    27: "the Magnet URI was bad",
+    28: "a bad or unrecognized option was given",
+    29: "the remote server was temporarily overloaded or under maintenance",
+    30: "aria2 could not parse the JSON-RPC request",
+    31: "reserved; not used",
+    32: "checksum validation failed",
+}
 
 
 class HttpDownloader(DownloaderBase):
@@ -124,6 +158,17 @@ class HttpDownloader(DownloaderBase):
             # remove file from incomplete downloads
             if self.downloading and not self.part:
                 util.remove_file(pathfmt.temppath)
+
+    def _aria2c_error_message(self, returncode, stderr):
+        stderr = stderr.decode(errors="replace").strip()
+        if stderr:
+            # Truncate to last 200 chars to avoid flooding the log
+            return f"aria2c: {stderr[-200:]}"
+
+        msg = f"aria2c: exit code {returncode}"
+        if detail := ARIA2C_EXIT_MESSAGES.get(returncode):
+            msg += f" ({detail})"
+        return msg
 
     def _can_use_aria2c(self, kwdict):
         """Return True when aria2c can handle this particular download"""
@@ -353,16 +398,8 @@ class HttpDownloader(DownloaderBase):
                     task_id, bytes_total, downloaded, 0)
 
             if proc.returncode != 0:
-                stderr = stderr.decode(errors="replace").strip()
-                if stderr:
-                    # Truncate to last 200 chars to avoid flooding the log
-                    msg = f"aria2c: {stderr[-200:]}"
-                else:
-                    msg = f"aria2c: exit code {proc.returncode}"
+                msg = self._aria2c_error_message(proc.returncode, stderr)
                 # Retry on transient network / server errors.
-                # aria2c exit codes: 2 = timeout, 6 = network problem,
-                # 7 = unfinished downloads, 8 = server error response,
-                # 23 = too many redirects.
                 if proc.returncode in (2, 6, 7, 8, 23):
                     if task_id is not None:
                         self.out.dashboard_issue(task_id, msg)

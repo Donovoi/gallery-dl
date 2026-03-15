@@ -411,6 +411,45 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
             self.assertFalse(os.path.exists(partpath))
             self.assertEqual(pathfmt.temppath, "")
 
+    @patch.object(http_downloader.HttpDownloader, "_aria2c_filesize",
+                  return_value=None)
+    @patch.object(http_downloader.subprocess, "Popen")
+    def test_aria2c_explains_exit_code_22(self, popen, _size):
+        popen.return_value = MockAria2cProcess(returncode=22)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dl, pathfmt = self._prepare_aria2c_download(tmpdir)
+
+            with self.assertLogs(dl.log, "WARNING") as log_info:
+                result = dl.download("https://example.org/file.jpg", pathfmt)
+
+        self.assertFalse(result)
+        self.assertIn(
+            "aria2c: exit code 22 (the HTTP response header was bad or "
+            "unexpected)",
+            log_info.output[-1],
+        )
+
+    def test_aria2c_exit_code_messages_cover_documented_codes(self):
+        self.assertEqual(set(http_downloader.ARIA2C_EXIT_MESSAGES), set(range(1, 33)))
+        self.assertEqual(len(http_downloader.ARIA2C_EXIT_MESSAGES), 32)
+        self.assertEqual(
+            http_downloader.ARIA2C_EXIT_MESSAGES[2],
+            "time out occurred",
+        )
+        self.assertEqual(
+            http_downloader.ARIA2C_EXIT_MESSAGES[22],
+            "the HTTP response header was bad or unexpected",
+        )
+        self.assertEqual(
+            http_downloader.ARIA2C_EXIT_MESSAGES[31],
+            "reserved; not used",
+        )
+        self.assertEqual(
+            http_downloader.ARIA2C_EXIT_MESSAGES[32],
+            "checksum validation failed",
+        )
+
 
 class TestDownloaderBase(unittest.TestCase):
     @classmethod
