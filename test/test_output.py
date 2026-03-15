@@ -26,14 +26,17 @@ class TestDashboardOutput(unittest.TestCase):
         out.dashboard_success(1, "file.jpg")
 
         rendered = "".join(call.args[0] for call in write.call_args_list)
+        final_render = write.call_args_list[-1].args[0]
         self.assertIn("gallery-dl aria2c dashboard", rendered)
         self.assertIn(" 50%", rendered)
         self.assertIn("#####-----", rendered)
         self.assertIn("B/s", rendered)
         self.assertIn("network hiccup", rendered)
-        self.assertIn("[DONE]", rendered)
         self.assertIn("RUN:1  DONE:0  SKIP:0  ERR:0", rendered)
         self.assertIn("RUN:0  DONE:1  SKIP:0  ERR:0", rendered)
+        self.assertNotIn("[DONE]", final_render)
+        self.assertNotIn("#####-----", final_render)
+        self.assertNotIn("B/s file.jpg", final_render)
 
     @patch("gallery_dl.output.stderr_write_flush")
     def test_color_dashboard_uses_ansi_and_unicode_progress(self, write):
@@ -70,6 +73,19 @@ class TestDashboardOutput(unittest.TestCase):
         rendered = "".join(call.args[0] for call in write.call_args_list)
         self.assertIn("  0%", rendered)
         self.assertIn("#---------", rendered)
+
+    @patch("gallery_dl.output.stderr_write_flush")
+    def test_dashboard_removes_skipped_tasks_from_main_list(self, write):
+        out = output.TerminalOutput()
+
+        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
+        out.dashboard_progress(1, 100, 20, 25)
+        out.dashboard_skip(1, "file.jpg")
+
+        final_render = write.call_args_list[-1].args[0]
+        self.assertIn("RUN:0  DONE:0  SKIP:1  ERR:0", final_render)
+        self.assertNotIn("[SKIP]", final_render)
+        self.assertNotIn("B/s file.jpg", final_render)
 
 
 if __name__ == "__main__":
