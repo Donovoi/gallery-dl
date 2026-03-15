@@ -8196,6 +8196,21 @@ Description
     subprocess exits.
 
 
+downloader.http.max-concurrent-downloads
+----------------------------------------
+Type
+    ``integer``
+Default
+    ``16``
+Description
+    Maximum number of eligible HTTP/HTTPS downloads to keep in flight when
+    using the ``aria2c`` backend.
+
+    Lower values reduce the amount of bandwidth gallery-dl can consume at
+    once and can leave more room for regular browsing or streaming, while
+    higher values bias towards faster bulk downloads.
+
+
 downloader.ytdl.cmdline-args
 ----------------------------
 Type
