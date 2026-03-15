@@ -43,12 +43,33 @@ class TestDashboardOutput(unittest.TestCase):
         out.dashboard_progress(1, 100, 50, 25)
 
         rendered = "".join(call.args[0] for call in write.call_args_list)
-        self.assertIn("\x1b[", rendered)
-        self.assertIn("▶ 1", rendered)
-        self.assertIn("█", rendered)
-        self.assertIn("░", rendered)
+        self.assertIn("\x1b[1;34m▶\x1b[0m", rendered)
+        self.assertIn("\x1b[1;34m█", rendered)
+        self.assertIn("\x1b[0;37m░", rendered)
         self.assertIn("[", rendered)
         self.assertIn("file.jpg", rendered)
+
+    @patch("gallery_dl.output.stderr_write_flush")
+    def test_dashboard_clamps_progress_to_total(self, write):
+        out = output.TerminalOutput()
+
+        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
+        out.dashboard_progress(1, 100, 150, 25)
+
+        rendered = "".join(call.args[0] for call in write.call_args_list)
+        self.assertIn("100%", rendered)
+        self.assertIn("##########", rendered)
+
+    @patch("gallery_dl.output.stderr_write_flush")
+    def test_dashboard_shows_small_nonzero_progress(self, write):
+        out = output.TerminalOutput()
+
+        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
+        out.dashboard_progress(1, 1000, 1, 25)
+
+        rendered = "".join(call.args[0] for call in write.call_args_list)
+        self.assertIn("  0%", rendered)
+        self.assertIn("#---------", rendered)
 
 
 if __name__ == "__main__":

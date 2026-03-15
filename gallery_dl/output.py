@@ -445,6 +445,15 @@ class PipeOutput(NullOutput):
 
 
 class TerminalOutput():
+    _DASHBOARD_LABELS = {
+        "queued" : "QUE",
+        "running": "RUN",
+        "retry"  : "TRY",
+        "done"   : "DONE",
+        "skip"   : "SKIP",
+        "error"  : "ERR",
+    }
+
 
     def __init__(self):
         if shorten := config.get(("output",), "shorten", True):
@@ -549,34 +558,40 @@ class TerminalOutput():
                 self._dashboard_render()
 
     def _dashboard_summary(self, status, count):
-        label = {
-            "queued" : "QUE",
-            "running": "RUN",
-            "retry"  : "TRY",
-            "done"   : "DONE",
-            "skip"   : "SKIP",
-            "error"  : "ERR",
-        }[status]
-        return f"{label}:{count}"
+        return f"{self._dashboard_label(status)}:{count}"
 
     def _dashboard_label(self, status):
-        return {
-            "queued" : "QUE",
-            "running": "RUN",
-            "retry"  : "TRY",
-            "done"   : "DONE",
-            "skip"   : "SKIP",
-            "error"  : "ERR",
-        }[status]
+        return self._DASHBOARD_LABELS.get(status, status[:3].upper())
+
+    def _dashboard_downloaded(self, total, downloaded):
+        return min(downloaded, total) if total else downloaded
+
+    def _dashboard_filled(self, total, downloaded, width):
+        if not total or not downloaded:
+            return 0
+        return min(width, max(1, downloaded * width // total))
 
     def _dashboard_bar(self, status, total, downloaded, width=10):
         if not total:
             return "-" * width
-        filled = min(width, downloaded * width // total)
+        downloaded = self._dashboard_downloaded(total, downloaded)
+        filled = self._dashboard_filled(total, downloaded, width)
         return "#" * filled + "-" * (width - filled)
 
     def _dashboard_title(self, text):
         return text
+
+    def _dashboard_percent(self, total, downloaded):
+        if not total:
+            return " --%"
+        downloaded = self._dashboard_downloaded(total, downloaded)
+        return f"{downloaded * 100 // total:>3}%"
+
+    def _dashboard_show_url(self, task, status):
+        return (
+            task["path"] and task["path"] != task["url"] and
+            (status in ("queued", "retry", "error") or task["issue"])
+        )
 
     def _dashboard_render(self):
         active = done = failed = skipped = 0
@@ -609,18 +624,14 @@ class TerminalOutput():
             total = task["bytes_total"]
             downloaded = task["bytes_downloaded"]
             speed = util.format_value(task["bytes_per_second"])
-            if total:
-                percent = f"{downloaded * 100 // total:>3}%"
-            else:
-                percent = " --%"
+            percent = self._dashboard_percent(total, downloaded)
             label = self._dashboard_label(status)
             bar = self._dashboard_bar(status, total, downloaded)
             target = task["path"] or task["url"]
             lines.append(
                 self.shorten(
                     f"[{label}] {percent} {bar} {speed:>7}B/s {target}"))
-            if task["path"] and task["path"] != task["url"] and (
-                    status in ("queued", "retry", "error") or task["issue"]):
+            if self._dashboard_show_url(task, status):
                 lines.append(self.shorten(f"      {task['url']}"))
             if task["issue"]:
                 lines.append(self.shorten(f"      issue: {task['issue']}"))
@@ -634,6 +645,14 @@ class TerminalOutput():
 
 
 class ColorOutput(TerminalOutput):
+    _DASHBOARD_SYMBOLS = {
+        "queued" : "…",
+        "running": "▶",
+        "retry"  : "↻",
+        "done"   : "✓",
+        "skip"   : "↷",
+        "error"  : "✕",
+    }
 
     def __init__(self):
         TerminalOutput.__init__(self)
@@ -669,29 +688,19 @@ class ColorOutput(TerminalOutput):
         return f"\x1b[{color}m{text}\x1b[0m" if color else text
 
     def _dashboard_summary(self, status, count):
-        label = {
-            "running": "▶",
-            "done"   : "✓",
-            "skip"   : "↷",
-            "error"  : "✕",
-        }[status]
-        return self._dashboard_color(status, f"{label} {count}")
+        symbol = self._DASHBOARD_SYMBOLS.get(status, self._dashboard_label(status))
+        return self._dashboard_color(status, f"{symbol} {count}")
 
     def _dashboard_label(self, status):
-        label = {
-            "queued" : "…",
-            "running": "▶",
-            "retry"  : "↻",
-            "done"   : "✓",
-            "skip"   : "↷",
-            "error"  : "✕",
-        }[status]
-        return self._dashboard_color(status, label)
+        return self._dashboard_color(
+            status, self._DASHBOARD_SYMBOLS.get(status, self._DASHBOARD_LABELS.get(status, status[:3].upper()))
+        )
 
     def _dashboard_bar(self, status, total, downloaded, width=10):
         if not total:
             return self._dashboard_color("muted", "·" * width)
-        filled = min(width, downloaded * width // total)
+        downloaded = self._dashboard_downloaded(total, downloaded)
+        filled = self._dashboard_filled(total, downloaded, width)
         return (
             self._dashboard_color(status, "█" * filled) +
             self._dashboard_color("muted", "░" * (width - filled))
