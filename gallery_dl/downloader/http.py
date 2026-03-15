@@ -22,6 +22,9 @@ ARIA2C_SPLIT = 16
 ARIA2C_MIN_SPLIT_SIZE = "1M"
 ARIA2C_POLL_INTERVAL = 0.5
 ARIA2C_POLL_FALLBACK = 0.25
+ARIA2C_EXIT_MESSAGES = {
+    22: "server returned an unsuccessful HTTP/FTP response",
+}
 
 
 class HttpDownloader(DownloaderBase):
@@ -124,6 +127,17 @@ class HttpDownloader(DownloaderBase):
             # remove file from incomplete downloads
             if self.downloading and not self.part:
                 util.remove_file(pathfmt.temppath)
+
+    def _aria2c_error_message(self, returncode, stderr):
+        stderr = stderr.decode(errors="replace").strip()
+        if stderr:
+            # Truncate to last 200 chars to avoid flooding the log
+            return f"aria2c: {stderr[-200:]}"
+
+        msg = f"aria2c: exit code {returncode}"
+        if detail := ARIA2C_EXIT_MESSAGES.get(returncode):
+            msg += f" ({detail})"
+        return msg
 
     def _can_use_aria2c(self, kwdict):
         """Return True when aria2c can handle this particular download"""
@@ -353,16 +367,8 @@ class HttpDownloader(DownloaderBase):
                     task_id, bytes_total, downloaded, 0)
 
             if proc.returncode != 0:
-                stderr = stderr.decode(errors="replace").strip()
-                if stderr:
-                    # Truncate to last 200 chars to avoid flooding the log
-                    msg = f"aria2c: {stderr[-200:]}"
-                else:
-                    msg = f"aria2c: exit code {proc.returncode}"
+                msg = self._aria2c_error_message(proc.returncode, stderr)
                 # Retry on transient network / server errors.
-                # aria2c exit codes: 2 = timeout, 6 = network problem,
-                # 7 = unfinished downloads, 8 = server error response,
-                # 23 = too many redirects.
                 if proc.returncode in (2, 6, 7, 8, 23):
                     if task_id is not None:
                         self.out.dashboard_issue(task_id, msg)

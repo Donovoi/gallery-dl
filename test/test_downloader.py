@@ -411,6 +411,25 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
             self.assertFalse(os.path.exists(partpath))
             self.assertEqual(pathfmt.temppath, "")
 
+    @patch.object(http_downloader.HttpDownloader, "_aria2c_filesize",
+                  return_value=None)
+    @patch.object(http_downloader.subprocess, "Popen")
+    def test_aria2c_explains_exit_code_22(self, popen, _size):
+        popen.return_value = MockAria2cProcess(returncode=22)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dl, pathfmt = self._prepare_aria2c_download(tmpdir)
+
+            with self.assertLogs(dl.log, "WARNING") as log_info:
+                result = dl.download("https://example.org/file.jpg", pathfmt)
+
+        self.assertFalse(result)
+        self.assertIn(
+            "aria2c: exit code 22 (server returned an unsuccessful "
+            "HTTP/FTP response)",
+            log_info.output[-1],
+        )
+
 
 class TestDownloaderBase(unittest.TestCase):
     @classmethod
