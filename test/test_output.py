@@ -75,6 +75,16 @@ class TestDashboardOutput(unittest.TestCase):
         self.assertIn("#---------", rendered)
 
     @patch("gallery_dl.output.stderr_write_flush")
+    def test_dashboard_shows_unknown_size_explicitly(self, write):
+        out = output.TerminalOutput()
+
+        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
+
+        rendered = "".join(call.args[0] for call in write.call_args_list)
+        self.assertIn(" n/a", rendered)
+        self.assertIn("unknown...", rendered)
+
+    @patch("gallery_dl.output.stderr_write_flush")
     def test_dashboard_removes_skipped_tasks_from_main_list(self, write):
         out = output.TerminalOutput()
 

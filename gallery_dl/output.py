@@ -571,9 +571,12 @@ class TerminalOutput():
             return 0
         return min(width, max(1, downloaded * width // total))
 
+    def _dashboard_unknown(self, width):
+        return ("unknown" + "." * width)[:width]
+
     def _dashboard_bar(self, status, total, downloaded, width=10):
         if not total:
-            return "-" * width
+            return self._dashboard_unknown(width)
         downloaded = self._dashboard_downloaded(total, downloaded)
         filled = self._dashboard_filled(total, downloaded, width)
         return "#" * filled + "-" * (width - filled)
@@ -583,7 +586,7 @@ class TerminalOutput():
 
     def _dashboard_percent(self, total, downloaded):
         if not total:
-            return " --%"
+            return " n/a"
         downloaded = self._dashboard_downloaded(total, downloaded)
         return f"{downloaded * 100 // total:>3}%"
 
@@ -703,7 +706,8 @@ class ColorOutput(TerminalOutput):
 
     def _dashboard_bar(self, status, total, downloaded, width=10):
         if not total:
-            return self._dashboard_color("muted", "·" * width)
+            return self._dashboard_color(
+                "muted", self._dashboard_unknown(width))
         downloaded = self._dashboard_downloaded(total, downloaded)
         filled = self._dashboard_filled(total, downloaded, width)
         return (
