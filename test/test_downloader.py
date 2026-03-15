@@ -425,9 +425,28 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
 
         self.assertFalse(result)
         self.assertIn(
-            "aria2c: exit code 22 (server returned an unsuccessful "
-            "HTTP/FTP response)",
+            "aria2c: exit code 22 (the HTTP response header was bad or "
+            "unexpected)",
             log_info.output[-1],
+        )
+
+    def test_aria2c_exit_code_messages_cover_documented_codes(self):
+        self.assertEqual(set(http_downloader.ARIA2C_EXIT_MESSAGES), set(range(1, 33)))
+        self.assertEqual(
+            http_downloader.ARIA2C_EXIT_MESSAGES[2],
+            "time out occurred",
+        )
+        self.assertEqual(
+            http_downloader.ARIA2C_EXIT_MESSAGES[22],
+            "the HTTP response header was bad or unexpected",
+        )
+        self.assertEqual(
+            http_downloader.ARIA2C_EXIT_MESSAGES[31],
+            "reserved; not used",
+        )
+        self.assertEqual(
+            http_downloader.ARIA2C_EXIT_MESSAGES[32],
+            "checksum validation failed",
         )
 
 
