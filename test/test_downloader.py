@@ -155,6 +155,10 @@ class TestDownloaderConfig(unittest.TestCase):
         self.assertEqual(dl.part, True)
         self.assertEqual(dl.partdir, None)
         self.assertEqual(dl._aria2c, False)
+        self.assertEqual(
+            dl.max_concurrent_downloads,
+            http_downloader.ARIA2C_MAX_CONCURRENT_DOWNLOADS,
+        )
 
         self.assertIs(dl.interval_429, extr._interval_429)
         self.assertIs(dl.retry_codes, extr._retry_codes)
@@ -256,6 +260,24 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
         dl = downloader.find("http")(self.job)
         self.assertEqual(dl._aria2c, "/usr/local/bin/aria2c")
         ensure_aria2c.assert_called_once_with("/usr/local/bin/aria2c")
+
+    def test_max_concurrent_downloads_config(self):
+        config.set(("downloader", "http"), "max-concurrent-downloads", 6)
+
+        dl = downloader.find("http")(self.job)
+
+        self.assertEqual(dl.max_concurrent_downloads, 6)
+
+    def test_max_concurrent_downloads_invalid_value(self):
+        config.set(("downloader", "http"), "max-concurrent-downloads", "oops")
+
+        with self.assertLogs(level="WARNING"):
+            dl = downloader.find("http")(self.job)
+
+        self.assertEqual(
+            dl.max_concurrent_downloads,
+            http_downloader.ARIA2C_MAX_CONCURRENT_DOWNLOADS,
+        )
 
     def test_can_use_aria2c_simple_get(self):
         self.assertTrue(self._can(extension="jpg"))
