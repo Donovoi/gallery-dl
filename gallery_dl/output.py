@@ -593,6 +593,9 @@ class TerminalOutput():
             (status in ("queued", "retry", "error") or task["issue"])
         )
 
+    def _dashboard_show_task(self, status):
+        return status in ("queued", "running", "retry", "error")
+
     def _dashboard_render(self):
         active = done = failed = skipped = 0
         lines = [
@@ -621,6 +624,8 @@ class TerminalOutput():
 
         for task in self._dashboard_tasks.values():
             status = task["status"]
+            if not self._dashboard_show_task(status):
+                continue
             total = task["bytes_total"]
             downloaded = task["bytes_downloaded"]
             speed = util.format_value(task["bytes_per_second"])
