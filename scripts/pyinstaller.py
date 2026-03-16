@@ -4,6 +4,7 @@
 """Build a standalone executable using Nuitka"""
 
 import argparse
+import os
 import subprocess
 import util
 import sys
@@ -44,6 +45,10 @@ def make_name(args):
     return name
 
 
+def build_path(*segments):
+    return os.path.join(util.ROOTDIR, *segments)
+
+
 def build_command(args):
     return [
         sys.executable,
@@ -51,18 +56,19 @@ def build_command(args):
         "--standalone",
         "--onefile",
         "--assume-yes-for-downloads",
-        "--output-dir", util.path("build"),
-        "--output-filename", util.path("dist", make_name(args)),
-        util.path("gallery_dl", "__main__.py"),
+        "--output-dir", build_path("build"),
+        "--output-filename", build_path("dist", make_name(args)),
+        build_path("gallery_dl", "__main__.py"),
     ]
 
 
 def main():
     args = parse_args()
-    label = make_label(args)
     if args.print:
-        return print(label)
+        return print(make_label(args))
 
+    os.makedirs(build_path("build"), exist_ok=True)
+    os.makedirs(build_path("dist"), exist_ok=True)
     return subprocess.call(build_command(args))
 
 
