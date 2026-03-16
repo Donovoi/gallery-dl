@@ -722,7 +722,7 @@ class TestExtractorPostDirectory(Extractor):
 
             url = f"https://example.org/{i}.jpg"
             yield Message.Url, url, text.nameext_from_url(url, {
-                "num" : i,
+                "num": i,
                 "tags": ["foo", "bar", "テスト"],
             })
 
