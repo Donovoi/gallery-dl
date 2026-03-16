@@ -141,16 +141,19 @@ macOS / Homebrew
 
     brew install aria2 ffmpeg mkvtoolnix && uv venv && uv pip install --python .venv ".[extra,video]"
 
-To build a standalone executable, install PyInstaller and run:
+To build a standalone executable with Nuitka, install Nuitka together
+with the optional runtime packages you want bundled and run:
 
 .. code:: bash
 
     uv venv
-    uv pip install --python .venv pyinstaller requests[socks] yt-dlp[default] pyyaml
+    uv pip install --python .venv nuitka requests[socks] yt-dlp[default] pyyaml
     make
-    uv run --python .venv scripts/pyinstaller.py
+    uv run --python .venv python scripts/pyinstaller.py
 
-This writes the executable to the ``dist/`` directory.
+This writes a compiled executable to the ``dist/`` directory. On Linux
+and macOS the generated file is typically named ``gallery-dl``; on
+Windows Nuitka appends ``.exe`` automatically.
 
 
 Standalone Executable
@@ -162,6 +165,17 @@ required Python packages included are available for
 - `Windows <https://github.com/Donovoi/gallery-dl/releases/download/v1.31.5/gallery-dl.exe>`__
   (Requires `Microsoft Visual C++ Redistributable Package (x86) <https://aka.ms/vs/17/release/vc_redist.x86.exe>`__)
 - `Linux   <https://github.com/Donovoi/gallery-dl/releases/download/v1.31.5/gallery-dl.bin>`__
+
+Run the downloaded or freshly built executable exactly like the Python
+entry point:
+
+.. code:: bash
+
+    ./gallery-dl URL
+
+On Windows, run ``gallery-dl.exe URL`` from ``cmd.exe`` or PowerShell.
+If you downloaded ``gallery-dl.bin`` on Linux, mark it executable first
+with ``chmod +x gallery-dl.bin`` and then run ``./gallery-dl.bin URL``.
 
 
 Nightly Builds
