@@ -124,7 +124,7 @@ class TestDownloadJob(TestJob):
             started_two = threading.Event()
             release = threading.Event()
 
-            class MockAria2cDownloader():
+            class MockAria2cDownloader:
                 _aria2c = "aria2c"
 
                 def _can_use_aria2c(self, kwdict):
@@ -171,7 +171,7 @@ class TestDownloadJob(TestJob):
             started_two = threading.Event()
             release = threading.Event()
 
-            class MockAria2cDownloader():
+            class MockAria2cDownloader:
                 _aria2c = "aria2c"
 
                 def _can_use_aria2c(self, kwdict):
@@ -713,6 +713,7 @@ class TestExtractorPostDirectory(Extractor):
 
     def items(self):
         for i in range(1, 4):
+            # Message.Directory ignores its URL field.
             yield Message.Directory, "", {
                 "user": {"id": 123, "name": "test"},
                 "author": {"id": 123, "name": "test"},
