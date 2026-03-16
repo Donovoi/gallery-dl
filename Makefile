@@ -25,7 +25,7 @@ test:
 	scripts/run_tests.py
 
 executable:
-	scripts/pyinstaller.py
+	$(PYTHON) scripts/pyinstaller.py
 
 completion: data/completion/gallery-dl data/completion/_gallery-dl data/completion/gallery-dl.fish
 
