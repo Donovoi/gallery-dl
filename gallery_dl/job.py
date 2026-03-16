@@ -544,14 +544,16 @@ class DownloadJob(Job):
 
     def handle_directory(self, kwdict):
         """Set and create the target directory for downloads"""
-        self._wait_pending_downloads()
+        keep_pending = self._can_keep_pending_downloads(kwdict)
+        if not keep_pending:
+            self._wait_pending_downloads()
         if self.pathfmt is None:
             self.initialize(kwdict)
         else:
-            if "post-after" in self.hooks:
+            if not keep_pending and "post-after" in self.hooks:
                 for callback in self.hooks["post-after"]:
                     callback(self.pathfmt)
-            if FLAGS.POST is not None:
+            if not keep_pending and FLAGS.POST is not None:
                 FLAGS.process("POST")
             self.pathfmt.set_directory(kwdict)
         if "post" in self.hooks:
@@ -785,6 +787,19 @@ class DownloadJob(Job):
         self._async_futures = []
         for future in futures:
             future.result()
+
+    def _can_keep_pending_downloads(self, kwdict):
+        if (not self._async_futures or
+                self.pathfmt is None or
+                "post" in self.hooks or
+                "post-after" in self.hooks or
+                FLAGS.POST is not None):
+            return False
+
+        pathfmt = path.PathFormat(self.extractor)
+        pathfmt.set_directory(kwdict)
+        return (pathfmt.directory == self.pathfmt.directory and
+                pathfmt.realdirectory == self.pathfmt.realdirectory)
 
     def initialize(self, kwdict=None):
         """initialize PathFormat, postprocessors, archive, options, etc"""

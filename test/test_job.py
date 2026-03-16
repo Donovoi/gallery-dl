@@ -157,6 +157,53 @@ class TestDownloadJob(TestJob):
             self.assertGreaterEqual(len(started), 2)
             self.assertEqual(tjob.status, 0)
 
+    def test_aria2c_downloads_run_concurrently_across_same_directory_posts(self):
+        config.set(("output",), "mode", False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config.set((), "base-directory", tmpdir)
+
+            extr = TestExtractorPostDirectory.from_url("test:gallery")
+            tjob = self.jobclass(extr)
+
+            started = []
+            started_lock = threading.Lock()
+            started_two = threading.Event()
+            release = threading.Event()
+
+            class MockAria2cDownloader():
+                _aria2c = "aria2c"
+
+                def _can_use_aria2c(self, kwdict):
+                    return True
+
+                def download(self, url, pathfmt):
+                    with started_lock:
+                        started.append(url)
+                        if len(started) >= 2:
+                            started_two.set()
+                    release.wait(2.0)
+                    with pathfmt.open("wb") as fp:
+                        fp.write(b"test")
+                    return True
+
+            downloader_instance = MockAria2cDownloader()
+            runner = threading.Thread(target=tjob.run)
+
+            with patch.object(
+                    tjob, "_aria2c_async_downloader",
+                    side_effect=lambda *args: downloader_instance):
+                runner.start()
+                try:
+                    self.assertTrue(started_two.wait(2.0))
+                finally:
+                    release.set()
+                runner.join(2.0)
+
+            self.assertFalse(runner.is_alive())
+            self.assertGreaterEqual(len(started), 2)
+            self.assertEqual(tjob.status, 0)
+
     def test_aria2c_async_disabled_with_file_hooks(self):
         extr = TestExtractor.from_url("test:")
         tjob = self.jobclass(extr)
@@ -654,6 +701,28 @@ Site 2:
                 "user": user,
                 "author": user,
                 "_fallback": (f"{root}/alt/{i}.jpg",),
+            })
+
+
+class TestExtractorPostDirectory(Extractor):
+    category = "test_category"
+    subcategory = "test_subcategory_gallery"
+    directory_fmt = ("{category}",)
+    filename_fmt = "test_{filename}.{extension}"
+    pattern = r"test:gallery$"
+
+    def items(self):
+        for i in range(1, 4):
+            yield Message.Directory, "", {
+                "user": {"id": 123, "name": "test"},
+                "author": {"id": 123, "name": "test"},
+                "num": i,
+            }
+
+            url = f"https://example.org/{i}.jpg"
+            yield Message.Url, url, text.nameext_from_url(url, {
+                "num" : i,
+                "tags": ["foo", "bar", "テスト"],
             })
 
 
