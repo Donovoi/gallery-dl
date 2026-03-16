@@ -13,6 +13,7 @@ import functools
 import collections
 import concurrent.futures
 import threading
+import copy
 
 from . import (
     extractor,
@@ -796,7 +797,7 @@ class DownloadJob(Job):
                 FLAGS.POST is not None):
             return False
 
-        pathfmt = path.PathFormat(self.extractor)
+        pathfmt = copy.copy(self.pathfmt)
         pathfmt.set_directory(kwdict)
         return (pathfmt.directory == self.pathfmt.directory and
                 pathfmt.realdirectory == self.pathfmt.realdirectory)
