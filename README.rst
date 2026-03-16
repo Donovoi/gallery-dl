@@ -181,8 +181,11 @@ with ``chmod +x gallery-dl.bin`` and then run ``./gallery-dl.bin URL``.
 Nightly Builds
 --------------
 
-| Executables build from the latest commit can be found at
-| https://github.com/gdl-org/builds/releases
+| Releases for each push to the ``master`` branch are published at
+| https://github.com/Donovoi/gallery-dl/releases
+| and include Nuitka standalone binaries for Windows, Linux, and macOS,
+| plus wheel and source archives for Python environments such as iOS
+| and Android.
 
 
 Snap
