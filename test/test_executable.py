@@ -36,7 +36,7 @@ class TestExecutable(unittest.TestCase):
             os=None,
             arch=None,
             label="windows",
-            extension="EXE",
+            extension="exe",
             print=False,
         )
 

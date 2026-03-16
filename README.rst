@@ -149,7 +149,7 @@ with the optional runtime packages you want bundled and run:
     uv venv
     uv pip install --python .venv nuitka requests[socks] yt-dlp[default] pyyaml
     make
-    uv run --python .venv python scripts/pyinstaller.py
+    uv run --python .venv scripts/pyinstaller.py
 
 This writes a compiled executable to the ``dist/`` directory. On Linux
 and macOS the generated file is typically named ``gallery-dl``; on
