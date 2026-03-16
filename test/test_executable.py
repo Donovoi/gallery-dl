@@ -11,7 +11,7 @@ import os
 import sys
 import unittest
 from argparse import Namespace
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOTDIR, "scripts"))
@@ -31,7 +31,8 @@ class TestExecutable(unittest.TestCase):
 
         self.assertEqual(pyinstaller.make_label(args), "linux_x86")
 
-    def test_build_command_uses_nuitka_and_dist_output(self):
+    @patch("pyinstaller.os.makedirs")
+    def test_build_command_uses_nuitka_and_dist_output(self, makedirs):
         args = Namespace(
             os=None,
             arch=None,
@@ -51,15 +52,21 @@ class TestExecutable(unittest.TestCase):
                 ROOTDIR, "dist", "gallery-dl_windows.exe"),
             os.path.join(ROOTDIR, "gallery_dl", "__main__.py"),
         ])
+        makedirs.assert_not_called()
 
+    @patch("pyinstaller.os.makedirs")
     @patch("pyinstaller.subprocess.call")
-    def test_main_invokes_nuitka(self, call):
-        call.return_value = 0
+    def test_main_invokes_nuitka(self, subprocess_call, makedirs):
+        subprocess_call.return_value = 0
 
         with patch.object(sys, "argv", ["pyinstaller.py", "--label", "linux"]):
             self.assertEqual(pyinstaller.main(), 0)
 
-        call.assert_called_once_with([
+        self.assertEqual(makedirs.call_args_list, [
+            call(os.path.join(ROOTDIR, "build"), exist_ok=True),
+            call(os.path.join(ROOTDIR, "dist"), exist_ok=True),
+        ])
+        subprocess_call.assert_called_once_with([
             sys.executable,
             "-m", "nuitka",
             "--standalone",
