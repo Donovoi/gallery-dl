@@ -33,6 +33,10 @@ class TestTestsWorkflow(unittest.TestCase):
         self.assertIn("    types:", self.lines)
         self.assertIn("    - completed", self.lines)
 
+    def test_permissions_are_read_only(self):
+        self.assertIn("permissions:", self.lines)
+        self.assertIn("  contents: read", self.lines)
+
     def test_workflow_run_checks_out_agent_head_sha(self):
         self.assertIn(
             "        ref: ${{ github.event_name == 'workflow_run' && "
