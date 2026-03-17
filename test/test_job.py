@@ -157,7 +157,8 @@ class TestDownloadJob(TestJob):
             self.assertGreaterEqual(len(started), 2)
             self.assertEqual(tjob.status, 0)
 
-    def test_aria2c_downloads_run_concurrently_across_same_directory_posts(self):
+    def test_aria2c_downloads_run_concurrently_across_same_directory_posts(
+            self):
         config.set(("output",), "mode", False)
 
         with tempfile.TemporaryDirectory() as tmpdir:
