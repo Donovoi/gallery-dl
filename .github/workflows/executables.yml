@@ -13,7 +13,7 @@ env:
   RELEASE_TAG: master-${{ github.sha }}
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -133,6 +133,8 @@ jobs:
     - build
     - package
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - uses: actions/download-artifact@v4
@@ -159,6 +161,5 @@ jobs:
         bodyFile: body.md
         artifacts: "executable-*/*,python-package/*"
         allowUpdates: true
-        makeLatest: true
         prerelease: true
         token: ${{ github.token }}
