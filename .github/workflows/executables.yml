@@ -119,13 +119,17 @@ jobs:
         python -m pip install build
         python -m build
 
-    - name: Validate universal mobile package
+    - name: Validate mobile package artifacts
       run: |
         python - <<'PY'
         from email.parser import Parser
         import glob
         import os
         import zipfile
+
+        sdists = glob.glob("dist/*.tar.gz")
+        if len(sdists) != 1:
+            raise SystemExit("expected exactly one source archive in dist/")
 
         wheels = glob.glob("dist/*.whl")
         if len(wheels) != 1:
@@ -154,7 +158,11 @@ jobs:
         if "py3-none-any" not in metadata.get_all("Tag", []):
             raise SystemExit("expected a py3-none-any wheel tag")
 
-        print("validated universal pure-Python wheel", os.path.basename(wheel))
+        print(
+            "validated mobile package artifacts",
+            os.path.basename(wheel),
+            os.path.basename(sdists[0]),
+        )
         PY
 
     - uses: actions/upload-artifact@v4
@@ -189,7 +197,7 @@ jobs:
 
         Included assets:
         - Nuitka standalone builds for Windows, Linux, and macOS across x64, x86, and arm64 runners.
-        - Universal Python wheel and source distributions for Python-based 64-bit ARM mobile environments such as Samsung Galaxy and Google Pixel devices.
+        - Universal Python wheel and source archive for Python-based 64-bit ARM mobile environments such as Samsung Galaxy and Google Pixel devices.
         EOF
 
     - uses: ncipollo/release-action@v1
