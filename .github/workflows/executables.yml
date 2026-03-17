@@ -122,6 +122,7 @@ jobs:
     - name: Validate universal mobile package
       run: |
         python - <<'PY'
+        from email.parser import Parser
         import glob
         import os
         import zipfile
@@ -138,14 +139,19 @@ jobs:
 
         with zipfile.ZipFile(wheel) as zf:
             wheel_info = next(
-                name for name in zf.namelist()
-                if name.endswith(".dist-info/WHEEL")
+                (
+                    name for name in zf.namelist()
+                    if name.endswith(".dist-info/WHEEL")
+                ),
+                None,
             )
-            metadata = zf.read(wheel_info).decode()
+            if wheel_info is None:
+                raise SystemExit("expected wheel metadata in .dist-info/WHEEL")
+            metadata = Parser().parsestr(zf.read(wheel_info).decode())
 
-        if "Root-Is-Purelib: true" not in metadata:
+        if metadata.get("Root-Is-Purelib") != "true":
             raise SystemExit("expected a pure-Python wheel")
-        if "Tag: py3-none-any" not in metadata:
+        if "py3-none-any" not in metadata.get_all("Tag", []):
             raise SystemExit("expected a py3-none-any wheel tag")
 
         print("validated", os.path.basename(wheel), "for 64-bit ARM mobile Python")
