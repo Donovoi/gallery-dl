@@ -31,6 +31,17 @@ class TestExecutable(unittest.TestCase):
 
         self.assertEqual(pyinstaller.make_label(args), "linux_x86")
 
+    def test_make_label_appends_arm64_suffix(self):
+        args = Namespace(
+            os="ubuntu-24.04-arm",
+            arch="aarch64",
+            label=None,
+            extension=None,
+            print=False,
+        )
+
+        self.assertEqual(pyinstaller.make_label(args), "linux_arm64")
+
     @patch("pyinstaller.os.makedirs")
     def test_build_command_uses_nuitka_and_dist_output(self, makedirs):
         args = Namespace(
