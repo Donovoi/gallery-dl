@@ -454,7 +454,6 @@ class TerminalOutput():
         "error"  : "ERR",
     }
 
-
     def __init__(self):
         if shorten := config.get(("output",), "shorten", True):
             func = shorten_string_eaw if shorten == "eaw" else shorten_string
@@ -696,12 +695,17 @@ class ColorOutput(TerminalOutput):
         return f"\x1b[{color}m{text}\x1b[0m" if color else text
 
     def _dashboard_summary(self, status, count):
-        symbol = self._DASHBOARD_SYMBOLS.get(status, self._dashboard_label(status))
+        symbol = self._DASHBOARD_SYMBOLS.get(
+            status, self._dashboard_label(status))
         return self._dashboard_color(status, f"{symbol} {count}")
 
     def _dashboard_label(self, status):
         return self._dashboard_color(
-            status, self._DASHBOARD_SYMBOLS.get(status, self._DASHBOARD_LABELS.get(status, status[:3].upper()))
+            status,
+            self._DASHBOARD_SYMBOLS.get(
+                status,
+                self._DASHBOARD_LABELS.get(status, status[:3].upper()),
+            ),
         )
 
     def _dashboard_bar(self, status, total, downloaded, width=10):

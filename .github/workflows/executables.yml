@@ -2,6 +2,8 @@ name: Executables
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
   push:
     branches:
     - master
@@ -10,7 +12,6 @@ on:
 
 env:
   DATE_FORMAT: "%Y.%m.%d"
-  RELEASE_TAG: master-${{ github.sha }}
 
 permissions:
   contents: read
@@ -187,8 +188,19 @@ jobs:
 
     - name: Environment Variables
       run: |
-        echo "DATE=$(date '+${{ env.DATE_FORMAT }}')" >> "$GITHUB_ENV"
-        echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+        DATE=$(date '+${{ env.DATE_FORMAT }}')
+        SHORT_SHA=${GITHUB_SHA::7}
+
+        echo "DATE=${DATE}" >> "$GITHUB_ENV"
+        echo "SHORT_SHA=${SHORT_SHA}" >> "$GITHUB_ENV"
+
+        if [[ "${{ github.event_name }}" == "schedule" ]]; then
+          echo "RELEASE_TAG=nightly-${DATE}" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=nightly build ${DATE} (${SHORT_SHA})" >> "$GITHUB_ENV"
+        else
+          echo "RELEASE_TAG=master-${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=master build ${DATE} (${SHORT_SHA})" >> "$GITHUB_ENV"
+        fi
 
     - name: Body
       run: |
@@ -203,9 +215,10 @@ jobs:
     - uses: ncipollo/release-action@v1
       with:
         tag: ${{ env.RELEASE_TAG }}
-        name: master build ${{ env.DATE }} (${{ env.SHORT_SHA }})
+        name: ${{ env.RELEASE_NAME }}
         bodyFile: body.md
         artifacts: "executable-*/*,python-package-mobile/*"
         allowUpdates: true
+        replacesArtifacts: true
         prerelease: true
         token: ${{ github.token }}

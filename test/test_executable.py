@@ -10,10 +10,12 @@
 import os
 import sys
 import unittest
+from pathlib import Path
 from argparse import Namespace
 from unittest.mock import call, patch
 
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WORKFLOW = Path(ROOTDIR, ".github", "workflows", "executables.yml")
 sys.path.insert(0, os.path.join(ROOTDIR, "scripts"))
 import pyinstaller  # noqa E402
 
@@ -88,6 +90,29 @@ class TestExecutable(unittest.TestCase):
                 ROOTDIR, "dist", "gallery-dl_linux"),
             os.path.join(ROOTDIR, "gallery_dl", "__main__.py"),
         ])
+
+
+class TestExecutableWorkflow(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.workflow = WORKFLOW.read_text().replace("\r\n", "\n")
+
+    def test_workflow_has_daily_schedule(self):
+        self.assertRegex(self.workflow, r"(?m)^\s*schedule:\s*$")
+        self.assertRegex(
+            self.workflow,
+            (r"(?m)^\s*-\s+cron:\s*(?P<quote>['\"])"
+             r"\S+\s+\S+\s+\*\s+\*\s+\*(?P=quote)\s*$"),
+        )
+
+    def test_workflow_has_nightly_release_tag(self):
+        self.assertIn(
+            'if [[ "${{ github.event_name }}" == "schedule" ]]; then',
+            self.workflow,
+        )
+        self.assertIn('RELEASE_TAG=nightly-${DATE}', self.workflow)
+        self.assertIn('RELEASE_TAG=master-${GITHUB_SHA}', self.workflow)
 
 
 if __name__ == "__main__":
