@@ -30,8 +30,14 @@ def make_label(args):
         if os == "ubuntu":
             os = "linux"
         label += os
-    if args.arch == "x86":
-        label += "_x86"
+    arch = (args.arch or "").lower()
+    arch = {
+        "amd64": "x64",
+        "x86_64": "x64",
+        "aarch64": "arm64",
+    }.get(arch, arch)
+    if arch and arch != "x64":
+        label += "_{}".format(arch)
     return label
 
 
