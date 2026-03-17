@@ -184,8 +184,9 @@ Nightly Builds
 | Releases for each push to the ``master`` branch are published at
 | https://github.com/Donovoi/gallery-dl/releases
 | and include Nuitka standalone binaries for Windows, Linux, and macOS,
-| plus wheel and source archives for Python environments such as iOS
-| and Android.
+| plus a universal Python wheel and source archive for Python environments
+| on 64-bit ARM mobile devices such as Samsung Galaxy, Google Pixel, and
+| similar Android hardware.
 
 
 Snap
