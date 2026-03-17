@@ -159,7 +159,7 @@ Windows Nuitka appends ``.exe`` automatically.
 Standalone Executable
 ---------------------
 
-Prebuilt build releases with a Python interpreter and required Python
+Prebuilt releases with a Python interpreter and required Python
 packages included are published at
 `GitHub Releases <https://github.com/Donovoi/gallery-dl/releases>`__
 for each push to the ``master`` branch and include Nuitka standalone
@@ -169,19 +169,24 @@ executables for
 - Linux x64 and arm64
 - macOS x64 and arm64
 
-Windows builds require the
-`Microsoft Visual C++ Redistributable Package <https://aka.ms/vs/17/release/vc_redist.x86.exe>`__.
+Windows builds require the Microsoft Visual C++ Redistributable Package:
+`x64 <https://aka.ms/vs/17/release/vc_redist.x64.exe>`__ or
+`x86 <https://aka.ms/vs/17/release/vc_redist.x86.exe>`__.
 
 Run the downloaded or freshly built executable exactly like the Python
 entry point:
 
 .. code:: bash
 
-    ./gallery-dl URL
+    ./gallery-dl_linux URL
 
-On Windows, run ``gallery-dl.exe URL`` from ``cmd.exe`` or PowerShell.
-On Linux and macOS, mark the downloaded file executable first with
-``chmod +x ./gallery-dl*`` and then run that file.
+Downloaded release files keep their platform label, for example
+``gallery-dl_linux``, ``gallery-dl_linux_arm64``, ``gallery-dl_macos``,
+``gallery-dl_macos_arm64``, ``gallery-dl_windows.exe``, and
+``gallery-dl_windows_x86.exe``. On Windows, run the matching ``.exe``
+from ``cmd.exe`` or PowerShell. On Linux and macOS, mark the downloaded
+file executable first with ``chmod +x ./gallery-dl_*`` and then run the
+matching file directly, or rename it to ``gallery-dl`` first.
 
 
 Nightly Builds
@@ -231,7 +236,7 @@ gallery-dl to ``PATH`` for the current and future shells:
     (uv tool uninstall gallery-dl >/dev/null 2>&1 || true) && \
     uv tool install "$WHEEL" && \
     BIN_DIR="$(uv tool dir --bin)" && \
-    PATH_LINE="$(printf 'export PATH=\"%s:$PATH\"' "$BIN_DIR")" && \
+    PATH_LINE="$(printf 'export PATH="%s:$PATH"' "$BIN_DIR")" && \
     export PATH="$BIN_DIR:$PATH" && \
     { grep -qsF "$BIN_DIR" "$HOME/.profile" || printf '%s\n' "$PATH_LINE" >> "$HOME/.profile"; }
 
