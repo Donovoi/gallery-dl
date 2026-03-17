@@ -83,13 +83,14 @@ at the Termux Python interpreter:
     gallery-dl URL
 
 If a future Android or Termux update prevents ``uv tool install`` from
-managing its own environment, the fallback is to download a compatible
-``gallery-dl`` executable for your device and place it in ``$PREFIX/bin``:
+managing its own environment, the fallback is to download a trusted
+``gallery-dl`` executable for your device architecture (for example, an
+ARM64 release asset or your own build) and place it in ``$PREFIX/bin``:
 
 .. code:: bash
 
     curl -L -o "$PREFIX/bin/gallery-dl" DOWNLOAD-URL-FOR-YOUR-DEVICE
-    chmod 755 "$PREFIX/bin/gallery-dl"
+    chmod 700 "$PREFIX/bin/gallery-dl"
     hash -r
     gallery-dl URL
 
