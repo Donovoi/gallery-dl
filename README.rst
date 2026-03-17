@@ -70,6 +70,32 @@ uv_ as well:
 
     uv tool install --from git+https://github.com/Donovoi/gallery-dl gallery-dl
 
+Android / Termux
+^^^^^^^^^^^^^^^^
+
+On Android, install uv_ and Python from Termux and point ``uv tool install``
+at the Termux Python interpreter:
+
+.. code:: bash
+
+    pkg update && pkg install -y python uv curl
+    uv tool install --python "$PREFIX/bin/python" gallery-dl
+    gallery-dl URL
+
+If a future Android or Termux update prevents ``uv tool install`` from
+managing its own environment, the fallback is to download a compatible
+``gallery-dl`` executable for your device and place it in ``$PREFIX/bin``:
+
+.. code:: bash
+
+    curl -L -o "$PREFIX/bin/gallery-dl" DOWNLOAD-URL-FOR-YOUR-DEVICE
+    chmod 755 "$PREFIX/bin/gallery-dl"
+    hash -r
+    gallery-dl URL
+
+To update that manual Android install later, run the ``curl`` command again
+to overwrite the existing executable in ``$PREFIX/bin``.
+
 
 Build from Source
 -----------------
