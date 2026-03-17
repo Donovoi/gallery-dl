@@ -30,7 +30,8 @@ class TestOption(unittest.TestCase):
         self.assertIn("--install-deps", help_text)
 
     @patch("gallery_dl.option.dependency.install_optional_dependencies")
-    def test_install_deps_exits_after_install(self, install_optional_dependencies):
+    def test_install_deps_exits_after_install(
+            self, install_optional_dependencies):
         install_optional_dependencies.return_value = True
 
         with self.assertRaises(SystemExit) as exc:

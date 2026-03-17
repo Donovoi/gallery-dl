@@ -125,7 +125,8 @@ class TestDependency(unittest.TestCase):
             call("truststore"),
             call("jinja2"),
         ])
-        announce.assert_any_call("Installing optional dependencies listed in the README")
+        announce.assert_any_call(
+            "Installing optional dependencies listed in the README")
         announce.assert_any_call("Optional dependency installation finished")
 
     @patch("gallery_dl.dependency._announce")
