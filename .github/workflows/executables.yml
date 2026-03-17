@@ -154,7 +154,7 @@ jobs:
         if "py3-none-any" not in metadata.get_all("Tag", []):
             raise SystemExit("expected a py3-none-any wheel tag")
 
-        print("validated", os.path.basename(wheel), "for 64-bit ARM mobile Python")
+        print("validated universal pure-Python wheel", os.path.basename(wheel))
         PY
 
     - uses: actions/upload-artifact@v4
