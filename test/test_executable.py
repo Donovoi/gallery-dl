@@ -96,13 +96,14 @@ class TestExecutableWorkflow(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.workflow = WORKFLOW.read_text()
+        cls.workflow = WORKFLOW.read_text().replace("\r\n", "\n")
 
     def test_workflow_has_daily_schedule(self):
-        self.assertIn("  schedule:\n", self.workflow)
+        self.assertRegex(self.workflow, r"(?m)^\s*schedule:\s*$")
         self.assertRegex(
             self.workflow,
-            r'- cron: "[^"]+ [^"]+ \* \* \*"',
+            (r"(?m)^\s*-\s+cron:\s*(?P<quote>['\"])"
+             r"[^'\"]+ \* \* \*(?P=quote)\s*$"),
         )
 
     def test_workflow_has_nightly_release_tag(self):
