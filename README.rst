@@ -208,12 +208,19 @@ gallery-dl to ``PATH`` for the current and future shells:
           releases = json.load(response)
 
       asset = next(
-          asset
-          for release in releases
-          if release["prerelease"]
-          for asset in release["assets"]
-          if asset["name"].endswith("-py3-none-any.whl")
+          (
+              asset
+              for release in releases
+              if release["prerelease"]
+              for asset in release["assets"]
+              if asset["name"].endswith("-py3-none-any.whl")
+          ),
+          None,
       )
+      if asset is None:
+          raise SystemExit(
+              "could not find a mobile py3-none-any wheel in the latest prerelease builds"
+          )
 
       path = Path.home() / ".cache" / "gallery-dl" / asset["name"]
       path.parent.mkdir(parents=True, exist_ok=True)
@@ -224,8 +231,9 @@ gallery-dl to ``PATH`` for the current and future shells:
     (uv tool uninstall gallery-dl >/dev/null 2>&1 || true) && \
     uv tool install "$WHEEL" && \
     BIN_DIR="$(uv tool dir --bin)" && \
+    PATH_LINE="$(printf 'export PATH=\"%s:$PATH\"' "$BIN_DIR")" && \
     export PATH="$BIN_DIR:$PATH" && \
-    { grep -qxF "export PATH=\"$BIN_DIR:\$PATH\"" "$HOME/.profile" || printf 'export PATH="%s:$PATH"\n' "$BIN_DIR" >> "$HOME/.profile"; }
+    { grep -qsF "$BIN_DIR" "$HOME/.profile" || printf '%s\n' "$PATH_LINE" >> "$HOME/.profile"; }
 
 If your shell uses a startup file other than ``~/.profile`` (for example,
 ``~/.bashrc`` or ``~/.zshrc``), add the same ``export PATH=...`` line there
