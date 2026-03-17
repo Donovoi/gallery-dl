@@ -705,7 +705,10 @@ class DownloadJob(Job):
 
     def download(self, url, pathfmt=None, downloader_instance=None):
         """Download 'url'"""
-        downloader = downloader_instance or self.get_downloader(url[:url.find(":")])
+        downloader = (
+            downloader_instance or
+            self.get_downloader(url[:url.find(":")])
+        )
         if downloader:
             try:
                 return downloader.download(
@@ -753,7 +756,10 @@ class DownloadJob(Job):
         scheme = url[:url.find(":")]
         if scheme not in ("http", "https") or self._directory_kwdict is None:
             return None
-        if self.hooks and any(hook in self.hooks for hook in ARIA2C_ASYNC_UNSAFE_HOOKS):
+        if (
+                self.hooks and
+                any(hook in self.hooks for hook in ARIA2C_ASYNC_UNSAFE_HOOKS)
+        ):
             return None
         instance = self._create_downloader(scheme)
         if (instance is None or
