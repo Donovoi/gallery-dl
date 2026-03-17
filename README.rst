@@ -84,18 +84,21 @@ at the Termux Python interpreter:
 
 If a future Android or Termux update prevents ``uv tool install`` from
 managing its own environment, the fallback is to download a trusted
-``gallery-dl`` executable for your device architecture (for example, an
-ARM64 release asset or your own build) and place it in ``$PREFIX/bin``:
+Android / Termux-compatible ``gallery-dl`` executable for your device
+architecture (for example, your own build) and place it in ``$PREFIX/bin``:
 
 .. code:: bash
 
-    curl -L -o "$PREFIX/bin/gallery-dl" DOWNLOAD-URL-FOR-YOUR-DEVICE
+    curl --fail --location --output "$PREFIX/bin/gallery-dl" DOWNLOAD-URL-FOR-YOUR-DEVICE
+    sha256sum "$PREFIX/bin/gallery-dl"
     chmod 700 "$PREFIX/bin/gallery-dl"
     hash -r
     gallery-dl URL
 
-To update that manual Android install later, run the ``curl`` command again
-to overwrite the existing executable in ``$PREFIX/bin``.
+Compare the checksum with the value published by the trusted build source
+before making the file executable. To update that manual Android install
+later, run the ``curl`` command again to overwrite the existing executable
+in ``$PREFIX/bin`` and verify its checksum again.
 
 
 Build from Source
