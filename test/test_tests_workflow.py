@@ -26,8 +26,19 @@ class TestTestsWorkflow(unittest.TestCase):
         self.assertIn("  push:", self.lines)
         self.assertIn("    - master", self.lines)
 
-    def test_push_runs_on_copilot_branches(self):
-        self.assertIn("    - 'copilot/**'", self.lines)
+    def test_workflow_run_triggers_for_copilot_agent(self):
+        self.assertIn("  workflow_run:", self.lines)
+        self.assertIn("    workflows:", self.lines)
+        self.assertIn("    - Copilot coding agent", self.lines)
+        self.assertIn("    types:", self.lines)
+        self.assertIn("    - completed", self.lines)
+
+    def test_workflow_run_checks_out_agent_head_sha(self):
+        self.assertIn(
+            "        ref: ${{ github.event_name == 'workflow_run' && "
+            "github.event.workflow_run.head_sha || github.sha }}",
+            self.lines,
+        )
 
     def test_pull_requests_still_target_master(self):
         self.assertIn("  pull_request:", self.lines)
