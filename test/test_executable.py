@@ -103,7 +103,7 @@ class TestExecutableWorkflow(unittest.TestCase):
         self.assertRegex(
             self.workflow,
             (r"(?m)^\s*-\s+cron:\s*(?P<quote>['\"])"
-             r"[^'\"]+ \* \* \*(?P=quote)\s*$"),
+             r"\S+\s+\S+\s+\*\s+\*\s+\*(?P=quote)\s*$"),
         )
 
     def test_workflow_has_nightly_release_tag(self):
