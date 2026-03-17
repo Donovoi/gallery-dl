@@ -159,23 +159,34 @@ Windows Nuitka appends ``.exe`` automatically.
 Standalone Executable
 ---------------------
 
-Prebuilt executable files with a Python interpreter and
-required Python packages included are available for
+Prebuilt releases with a Python interpreter and required Python
+packages included are published at
+`GitHub Releases <https://github.com/Donovoi/gallery-dl/releases>`__
+for each push to the ``master`` branch and include Nuitka standalone
+executables for
 
-- `Windows <https://github.com/Donovoi/gallery-dl/releases/download/v1.31.5/gallery-dl.exe>`__
-  (Requires `Microsoft Visual C++ Redistributable Package (x86) <https://aka.ms/vs/17/release/vc_redist.x86.exe>`__)
-- `Linux   <https://github.com/Donovoi/gallery-dl/releases/download/v1.31.5/gallery-dl.bin>`__
+- Windows x64 and x86
+- Linux x64 and arm64
+- macOS x64 and arm64
+
+Windows builds require the Microsoft Visual C++ Redistributable Package:
+`x64 <https://aka.ms/vs/17/release/vc_redist.x64.exe>`__ or
+`x86 <https://aka.ms/vs/17/release/vc_redist.x86.exe>`__.
 
 Run the downloaded or freshly built executable exactly like the Python
 entry point:
 
 .. code:: bash
 
-    ./gallery-dl URL
+    ./gallery-dl_linux URL
 
-On Windows, run ``gallery-dl.exe URL`` from ``cmd.exe`` or PowerShell.
-If you downloaded ``gallery-dl.bin`` on Linux, mark it executable first
-with ``chmod +x gallery-dl.bin`` and then run ``./gallery-dl.bin URL``.
+Downloaded release files keep their platform label, for example
+``gallery-dl_linux``, ``gallery-dl_linux_arm64``, ``gallery-dl_macos``,
+``gallery-dl_macos_arm64``, ``gallery-dl_windows.exe``, and
+``gallery-dl_windows_x86.exe``. On Windows, run the matching ``.exe``
+from ``cmd.exe`` or PowerShell. On Linux and macOS, mark the downloaded
+file executable first with ``chmod +x ./gallery-dl_*`` and then run the
+matching file directly, or rename it to ``gallery-dl`` first.
 
 
 Nightly Builds
@@ -183,10 +194,57 @@ Nightly Builds
 
 | Releases for each push to the ``master`` branch are published at
 | https://github.com/Donovoi/gallery-dl/releases
-| and include Nuitka standalone binaries for Windows, Linux, and macOS,
-| plus a universal Python wheel and source archive for Python environments
-| on 64-bit ARM mobile devices such as Samsung Galaxy, Google Pixel, and
-| similar Android hardware.
+| and include a universal ``py3-none-any`` wheel plus a source archive
+| for Python environments on 64-bit ARM mobile devices such as Samsung
+| Galaxy, Google Pixel, and similar Android hardware.
+
+To download the latest mobile build with uv_, install it, and add
+gallery-dl to ``PATH`` for the current and future shells:
+
+.. code:: bash
+
+    WHEEL="$(
+      uv run python - <<'PY'
+      import json
+      from pathlib import Path
+      from urllib.request import urlopen, urlretrieve
+
+      with urlopen("https://api.github.com/repos/Donovoi/gallery-dl/releases") as response:
+          releases = json.load(response)
+
+      asset = next(
+          (
+              asset
+              for release in releases
+              if release["prerelease"]
+              for asset in release["assets"]
+              if asset["name"].endswith("-py3-none-any.whl")
+          ),
+          None,
+      )
+      if asset is None:
+          raise SystemExit(
+              "could not find a mobile py3-none-any wheel in the latest prerelease builds"
+          )
+
+      path = Path.home() / ".cache" / "gallery-dl" / asset["name"]
+      path.parent.mkdir(parents=True, exist_ok=True)
+      urlretrieve(asset["browser_download_url"], path)
+      print(path)
+      PY
+    )" && \
+    (uv tool uninstall gallery-dl >/dev/null 2>&1 || true) && \
+    uv tool install "$WHEEL" && \
+    BIN_DIR="$(uv tool dir --bin)" && \
+    PATH_LINE="$(printf 'export PATH="%s:$PATH"' "$BIN_DIR")" && \
+    export PATH="$BIN_DIR:$PATH" && \
+    { grep -qsF "$BIN_DIR" "$HOME/.profile" || printf '%s\n' "$PATH_LINE" >> "$HOME/.profile"; }
+
+If your shell uses a startup file other than ``~/.profile`` (for example,
+``~/.bashrc`` or ``~/.zshrc``), add the same ``export PATH=...`` line there
+instead.
+
+After that, run ``gallery-dl URL`` normally.
 
 
 Snap
