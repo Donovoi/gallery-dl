@@ -198,12 +198,38 @@ gallery-dl to ``PATH`` for the current and future shells:
 
 .. code:: bash
 
-    WHEEL="$(uv run python -c 'import json, pathlib, urllib.request; releases = json.load(urllib.request.urlopen("https://api.github.com/repos/Donovoi/gallery-dl/releases")); asset = next(asset for release in releases if release["prerelease"] for asset in release["assets"] if asset["name"].endswith("-py3-none-any.whl")); path = pathlib.Path.home() / ".cache" / "gallery-dl" / asset["name"]; path.parent.mkdir(parents=True, exist_ok=True); urllib.request.urlretrieve(asset["browser_download_url"], path); print(path)')" && \
+    WHEEL="$(
+      uv run python - <<'PY'
+      import json
+      from pathlib import Path
+      from urllib.request import urlopen, urlretrieve
+
+      with urlopen("https://api.github.com/repos/Donovoi/gallery-dl/releases") as response:
+          releases = json.load(response)
+
+      asset = next(
+          asset
+          for release in releases
+          if release["prerelease"]
+          for asset in release["assets"]
+          if asset["name"].endswith("-py3-none-any.whl")
+      )
+
+      path = Path.home() / ".cache" / "gallery-dl" / asset["name"]
+      path.parent.mkdir(parents=True, exist_ok=True)
+      urlretrieve(asset["browser_download_url"], path)
+      print(path)
+      PY
+    )" && \
     (uv tool uninstall gallery-dl >/dev/null 2>&1 || true) && \
     uv tool install "$WHEEL" && \
     BIN_DIR="$(uv tool dir --bin)" && \
     export PATH="$BIN_DIR:$PATH" && \
     { grep -qxF "export PATH=\"$BIN_DIR:\$PATH\"" "$HOME/.profile" || printf 'export PATH="%s:$PATH"\n' "$BIN_DIR" >> "$HOME/.profile"; }
+
+If your shell uses a startup file other than ``~/.profile`` (for example,
+``~/.bashrc`` or ``~/.zshrc``), add the same ``export PATH=...`` line there
+instead.
 
 After that, run ``gallery-dl URL`` normally.
 
