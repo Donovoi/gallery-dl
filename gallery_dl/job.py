@@ -757,8 +757,8 @@ class DownloadJob(Job):
         if scheme not in ("http", "https") or self._directory_kwdict is None:
             return None
         if (
-                self.hooks and
-                any(hook in self.hooks for hook in ARIA2C_ASYNC_UNSAFE_HOOKS)
+            self.hooks and
+            any(hook in self.hooks for hook in ARIA2C_ASYNC_UNSAFE_HOOKS)
         ):
             return None
         instance = self._create_downloader(scheme)
