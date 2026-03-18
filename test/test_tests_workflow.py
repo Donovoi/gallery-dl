@@ -32,21 +32,37 @@ class TestTestsWorkflow(unittest.TestCase):
         self.assertIn("    - Copilot coding agent", self.lines)
         self.assertIn("    types:", self.lines)
         self.assertIn("    - completed", self.lines)
+        self.assertIn(
+            "github.event.workflow_run.conclusion == 'success'",
+            self.workflow,
+        )
+        self.assertIn(
+            "github.event.workflow_run.head_repository.full_name == "
+            "github.repository",
+            self.workflow,
+        )
+        self.assertIn(
+            "startsWith(github.event.workflow_run.head_branch, 'copilot/')",
+            self.workflow,
+        )
 
     def test_permissions_are_read_only(self):
         self.assertIn("permissions:", self.lines)
         self.assertIn("  contents: read", self.lines)
 
     def test_workflow_run_checks_out_agent_head_sha(self):
-        self.assertIn(
-            "        ref: ${{ github.event_name == 'workflow_run' && "
-            "github.event.workflow_run.head_sha || github.sha }}",
-            self.lines,
+        self.assertRegex(
+            self.workflow,
+            (r"ref:\s*\$\{\{\s*github\.event_name == 'workflow_run'"
+             r"\s*&&\s*github\.event\.workflow_run\.head_sha"
+             r"\s*\|\|\s*github\.sha\s*\}\}"),
         )
 
     def test_pull_requests_still_target_master(self):
-        self.assertIn("  pull_request:", self.lines)
-        self.assertEqual(self.lines.count("    - master"), 2)
+        self.assertRegex(
+            self.workflow,
+            r"(?ms)^  pull_request:\n    branches:\n    - master$",
+        )
 
 
 if __name__ == "__main__":
