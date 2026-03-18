@@ -114,6 +114,13 @@ class TestExecutableWorkflow(unittest.TestCase):
         self.assertIn('RELEASE_TAG=nightly-${DATE}', self.workflow)
         self.assertIn('RELEASE_TAG=master-${GITHUB_SHA}', self.workflow)
 
+    def test_workflow_pins_nuitka_version(self):
+        self.assertIn('NUITKA_VERSION: "4.0.6"', self.workflow)
+        self.assertIn(
+            "nuitka==${{ env.NUITKA_VERSION }}",
+            self.workflow,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

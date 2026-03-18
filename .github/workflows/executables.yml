@@ -12,6 +12,7 @@ on:
 
 env:
   DATE_FORMAT: "%Y.%m.%d"
+  NUITKA_VERSION: "4.0.6"
 
 permissions:
   contents: read
@@ -88,7 +89,7 @@ jobs:
 
     - name: Build executable
       run: |
-        pip install requests requests[socks] yt-dlp[default] pyyaml ${{ matrix.python-packages }} nuitka
+        pip install requests requests[socks] yt-dlp[default] pyyaml ${{ matrix.python-packages }} nuitka==${{ env.NUITKA_VERSION }}
         pip install truststore || true
         python ./scripts/pyinstaller.py --label '${{ env.LABEL }}'
 
