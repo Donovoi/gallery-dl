@@ -62,8 +62,8 @@ def build_command(args):
         "--standalone",
         "--onefile",
         "--assume-yes-for-downloads",
-        "--output-dir", build_path("build"),
-        "--output-filename", build_path("dist", make_name(args)),
+        "--output-dir={}".format(build_path("build")),
+        "--output-filename={}".format(build_path("dist", make_name(args))),
         build_path("gallery_dl", "__main__.py"),
     ]
 
