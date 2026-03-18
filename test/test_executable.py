@@ -60,9 +60,9 @@ class TestExecutable(unittest.TestCase):
             "--standalone",
             "--onefile",
             "--assume-yes-for-downloads",
-            "--output-dir", os.path.join(ROOTDIR, "build"),
-            "--output-filename", os.path.join(
-                ROOTDIR, "dist", "gallery-dl_windows.exe"),
+            "--output-dir={}".format(os.path.join(ROOTDIR, "build")),
+            "--output-filename={}".format(os.path.join(
+                ROOTDIR, "dist", "gallery-dl_windows.exe")),
             os.path.join(ROOTDIR, "gallery_dl", "__main__.py"),
         ])
         makedirs.assert_not_called()
@@ -85,9 +85,9 @@ class TestExecutable(unittest.TestCase):
             "--standalone",
             "--onefile",
             "--assume-yes-for-downloads",
-            "--output-dir", os.path.join(ROOTDIR, "build"),
-            "--output-filename", os.path.join(
-                ROOTDIR, "dist", "gallery-dl_linux"),
+            "--output-dir={}".format(os.path.join(ROOTDIR, "build")),
+            "--output-filename={}".format(os.path.join(
+                ROOTDIR, "dist", "gallery-dl_linux")),
             os.path.join(ROOTDIR, "gallery_dl", "__main__.py"),
         ])
 
