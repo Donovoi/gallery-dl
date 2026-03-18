@@ -8,9 +8,25 @@ on:
   pull_request:
     branches:
     - master
+  workflow_run:
+    workflows:
+    - Copilot coding agent
+    types:
+    - completed
+
+permissions:
+  contents: read
 
 jobs:
   test:
+
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        startsWith(github.event.workflow_run.head_branch, 'copilot/')
+      )
 
     runs-on: ubuntu-22.04
     strategy:
@@ -29,6 +45,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
     - name: Check file permissions
       run: |
