@@ -114,6 +114,10 @@ class TestExecutableWorkflow(unittest.TestCase):
         self.assertIn('RELEASE_TAG=nightly-${DATE}', self.workflow)
         self.assertIn('RELEASE_TAG=master-${GITHUB_SHA}', self.workflow)
 
+    def test_workflow_uses_supported_macos_intel_runner(self):
+        self.assertIn("os: macos-15-intel", self.workflow)
+        self.assertNotIn("os: macos-13", self.workflow)
+
     def test_workflow_pins_nuitka_version(self):
         self.assertRegex(
             self.workflow,
