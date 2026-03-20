@@ -8,6 +8,7 @@
 # published by the Free Software Foundation.
 
 import os
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -115,8 +116,17 @@ class TestExecutableWorkflow(unittest.TestCase):
         self.assertIn('RELEASE_TAG=master-${GITHUB_SHA}', self.workflow)
 
     def test_workflow_uses_supported_macos_intel_runner(self):
-        self.assertIn("os: macos-15-intel", self.workflow)
-        self.assertNotIn("os: macos-13", self.workflow)
+        match = re.search(
+            r"(?m)^ {8}- os: macos-15-intel$\n(?:^ {10}.+$\n?)+",
+            self.workflow,
+        )
+        self.assertIsNotNone(match)
+        self.assertRegex(match.group(0), r"(?m)^ {10}architecture: x64$")
+        self.assertRegex(
+            match.group(0),
+            r'(?m)^ {10}python-version: "3\.\d+"$',
+        )
+        self.assertNotRegex(self.workflow, r"os:\s+macos-13\b")
 
     def test_workflow_pins_nuitka_version(self):
         self.assertRegex(
