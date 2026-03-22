@@ -340,7 +340,7 @@ Special Values
         | ``"\\\\|/<>:\"?*"``
         | (https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file)
     ``"windows+"``
-        | ``{"\\": "⧹", "|" : "", "/" : "⧸", "<" : "＜", ">" : "＞", ":" : "：", "\"" : "＂", "?" : "？", "*" : "＊"}``
+        | ``{"\\": "⧹", "|": "｜", "/": "⧸", "<": "＜", ">": "＞", ":": "：", "\"": "＂", "?": "？", "*": "＊"}``
         | (replace characters not allowed by Windows with Unicode alternatives)
     ``"ascii"``
         | ``"^0-9A-Za-z_."``
@@ -1301,19 +1301,40 @@ Type
 Example
     * ``"/path/to/file.txt"``
     * ``"1girl,long_hair,  highres,commentary_request"``
+    * ``"1girl long_hair,  highres -commentary_request"``
     * ``["1girl", "long_hair", "highres", "commentary_request"]``
+    * ``["1girl long_hair", "highres -commentary_request"]``
 Description
     A list of tags to exclude/include for processed posts.
 
-    Posts containing a blacklisted tag or *not* containing any whitelisted tag
-    and all of their files will be ignored and not processed any further.
+    | Posts containing a blacklisted tag or *not* containing any whitelisted tag,
+      including all of their files,
+    | will be ignored and not processed any further.
+
+    `Danbooru Blacklist Rules <https://danbooru.donmai.us/wiki_pages/help:blacklists>`__
+    are supported.
 
     This can be
 
     * The |Path|_ of a plaintext file
       containing black-/whitelisted tag names separated by newlines
-    * A ``string`` with tag names separated by commas (``"tag1,tag2,tag3"``)
-    * A ``list`` of ``string`` tag names (``["tag1", "tag2", "tag3"]``)
+    * A ``string`` with tag names separated by commas (``"tag1,tag2 tag3,tag4"``)
+    * A ``list`` of ``string`` tag names (``["tag1", "tag2 tag3", "tag4"]``)
+
+    | Lines starting with ``#`` followed by a space
+      will be ignored and can be used for comments.
+      For example
+    | ``# this is a comment``
+
+    Using ``"/import"`` as value will import and apply
+    your account's blacklisted tags list. This is supported for
+
+    * ``[Danbooru]`` & ``[E621]`` instances
+      (requires `username & api-key <extractor.*.username & .password_>`__)
+    * ``sankaku``
+      (requires `username & password <extractor.*.username & .password_>`__)
+    * ``gelbooru`` & ``[gelbooru_v02]`` instances
+      (requires authenticated `cookies <extractor.*.cookies_>`__)
 
 
 extractor.*.archive
@@ -5367,6 +5388,14 @@ Description
     Try to fetch ``limit_sanity_level`` works via web API.
 
 
+extractor.pixiv.favorite.cursor
+-------------------------------
+Type
+    ``string``
+Description
+    Start from the given bookmark ID.
+
+
 extractor.pixiv-novel.comments
 ------------------------------
 Type
@@ -5473,6 +5502,14 @@ Description
     * `"japanese"`: List of Japanese tags
     * `"translated"`: List of translated tags
     * `"original"`: Unmodified list with both Japanese and translated tags
+
+
+extractor.pixiv-novel.bookmark.cursor
+-------------------------------------
+Type
+    ``string``
+Description
+    Start from the given bookmark ID.
 
 
 extractor.plurk.comments
