@@ -165,9 +165,14 @@ packages included are published at
 for each push to the ``master`` branch and include Nuitka standalone
 executables for
 
-- Windows x64 and x86
-- Linux x64 and arm64
-- macOS x64 and arm64
+- Stable upstream releases from
+  `mikf/gallery-dl <https://github.com/mikf/gallery-dl/releases>`__,
+  which currently publish Windows and Linux executables.
+- Fork prereleases from
+  `Donovoi/gallery-dl <https://github.com/Donovoi/gallery-dl/releases>`__
+  for each push to the ``master`` branch, including Nuitka standalone
+  builds for Windows x64 and x86, Linux x64 and arm64, and macOS x64 and
+  arm64.
 
 Windows builds require the Microsoft Visual C++ Redistributable Package:
 `x64 <https://aka.ms/vs/17/release/vc_redist.x64.exe>`__ or
@@ -180,7 +185,7 @@ entry point:
 
     ./gallery-dl_linux URL
 
-Downloaded release files keep their platform label, for example
+Downloaded fork prerelease files keep their platform label, for example
 ``gallery-dl_linux``, ``gallery-dl_linux_arm64``, ``gallery-dl_macos``,
 ``gallery-dl_macos_arm64``, ``gallery-dl_windows.exe``, and
 ``gallery-dl_windows_x86.exe``. On Windows, run the matching ``.exe``
