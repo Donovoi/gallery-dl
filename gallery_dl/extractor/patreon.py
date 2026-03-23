@@ -126,7 +126,12 @@ class PatreonExtractor(Extractor):
             for img in text.extract_iter(
                     content, '><figure><img src="', '>'):
                 url = text.unescape(img[:img.find('"')])
-                data = {"media_id": text.extr(img, 'media_id="', '"')}
+                data = {
+                    "media_id": (
+                        text.extr(img, 'data-media-id="', '"') or
+                        text.extr(img, 'media_id="', '"')
+                    )
+                }
                 yield "content", data, url, self._filename(url) or url
 
     def posts(self):
