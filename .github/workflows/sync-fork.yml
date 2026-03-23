@@ -1,0 +1,51 @@
+name: Sync Fork
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-fork
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'Donovoi/gallery-dl'
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: master
+        fetch-depth: 0
+
+    - name: Configure git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+    - name: Merge upstream/master
+      run: |
+        git remote add upstream https://github.com/mikf/gallery-dl.git
+        git fetch upstream master
+
+        if git merge-base --is-ancestor upstream/master HEAD; then
+          echo "Fork is already up to date with upstream/master"
+          exit 0
+        fi
+
+        if git merge --ff-only upstream/master; then
+          echo "Fast-forwarded master to upstream/master"
+        elif git merge --no-edit upstream/master; then
+          echo "Merged upstream/master into fork master"
+        else
+          echo "::error::Automatic merge with upstream/master failed"
+          git merge --abort
+          exit 1
+        fi
+
+        git push origin HEAD:master
