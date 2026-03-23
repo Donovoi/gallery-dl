@@ -160,19 +160,20 @@ Standalone Executable
 ---------------------
 
 Prebuilt releases with a Python interpreter and required Python
-packages included are published at
-`GitHub Releases <https://github.com/Donovoi/gallery-dl/releases>`__
-for each push to the ``master`` branch and include Nuitka standalone
-executables for
+packages included are available from:
 
-- Stable upstream releases from
-  `mikf/gallery-dl <https://github.com/mikf/gallery-dl/releases>`__,
-  which currently publish Windows and Linux executables.
-- Fork prereleases from
-  `Donovoi/gallery-dl <https://github.com/Donovoi/gallery-dl/releases>`__
-  for each push to the ``master`` branch, including Nuitka standalone
-  builds for Windows x64 and x86, Linux x64 and arm64, and macOS x64 and
-  arm64.
+- Stable upstream releases from `mikf/gallery-dl
+  <https://github.com/mikf/gallery-dl/releases>`__, which currently
+  publish:
+
+  - `Windows <https://github.com/mikf/gallery-dl/releases/latest/download/gallery-dl.exe>`__
+    (Requires `Microsoft Visual C++ Redistributable Package (x64) <https://aka.ms/vs/17/release/vc_redist.x64.exe>`__)
+  - `Linux <https://github.com/mikf/gallery-dl/releases/latest/download/gallery-dl.bin>`__
+
+- Fork prereleases from `Donovoi/gallery-dl
+  <https://github.com/Donovoi/gallery-dl/releases>`__ for each push to
+  the ``master`` branch, including Nuitka standalone builds for Windows
+  x64 and x86, Linux x64 and arm64, and macOS x64 and arm64.
 
 Windows builds require the Microsoft Visual C++ Redistributable Package:
 `x64 <https://aka.ms/vs/17/release/vc_redist.x64.exe>`__ or
