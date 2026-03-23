@@ -260,6 +260,27 @@ class TestDownloadJob(TestJob):
 
         self.assertEqual(captured["max_workers"], 3)
 
+    def test_tags_whitelist_import_does_not_call_import_blacklist(self):
+        config.set((), "tags-whitelist", "/import")
+
+        extr = TestExtractor.from_url("test:")
+        extr.import_blacklist = Mock(return_value="foo")
+        pred = self.jobclass(extr)._prepare_predicates("post")
+
+        self.assertFalse(pred("", {"tags": ["foo"]}))
+        extr.import_blacklist.assert_not_called()
+
+    def test_tags_blacklist_import_uses_import_blacklist(self):
+        config.set((), "tags-blacklist", "/import")
+
+        extr = TestExtractor.from_url("test:")
+        extr.import_blacklist = Mock(return_value="foo")
+        pred = self.jobclass(extr)._prepare_predicates("post")
+
+        self.assertFalse(pred("", {"tags": ["foo"]}))
+        self.assertTrue(pred("", {"tags": ["bar"]}))
+        extr.import_blacklist.assert_called_once_with()
+
 
 class TestKeywordJob(TestJob):
     jobclass = job.KeywordJob
