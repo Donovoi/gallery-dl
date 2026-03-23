@@ -169,9 +169,9 @@ executables for
   <https://github.com/mikf/gallery-dl/releases>`__, which currently
   publish:
 
-  - `Windows <https://github.com/mikf/gallery-dl/releases/download/v1.31.10/gallery-dl.exe>`__
+  - `Windows <https://github.com/mikf/gallery-dl/releases/latest/download/gallery-dl.exe>`__
     (Requires `Microsoft Visual C++ Redistributable Package (x86) <https://aka.ms/vs/17/release/vc_redist.x86.exe>`__)
-  - `Linux <https://github.com/mikf/gallery-dl/releases/download/v1.31.10/gallery-dl.bin>`__
+  - `Linux <https://github.com/mikf/gallery-dl/releases/latest/download/gallery-dl.bin>`__
 
 - Fork prereleases from `Donovoi/gallery-dl
   <https://github.com/Donovoi/gallery-dl/releases>`__ for each push to
