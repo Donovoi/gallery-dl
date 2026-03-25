@@ -202,7 +202,17 @@ Nightly Builds
 | https://github.com/Donovoi/gallery-dl/releases
 | and include a universal ``py3-none-any`` wheel plus a source archive
 | for Python environments on 64-bit ARM mobile devices such as Samsung
-| Galaxy, Google Pixel, and similar Android hardware.
+| Galaxy, Google Pixel, and similar Android hardware. If Termux reports
+| ``cannot execute: required file not found`` for ``gallery-dl_linux_arm64``,
+| use the Python package below instead of the Linux arm64 standalone
+| binary.
+
+To download the latest development version on Termux or another Android
+Python environment, install it, and run gallery-dl immediately:
+
+.. code:: bash
+
+    python3 -m pip install --user "gallery-dl @ https://github.com/Donovoi/gallery-dl/archive/refs/heads/master.zip" && python3 -m gallery_dl URL
 
 To download the latest mobile build with uv_, install it, and add
 gallery-dl to ``PATH`` for the current and future shells:
