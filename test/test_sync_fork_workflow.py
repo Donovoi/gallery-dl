@@ -23,13 +23,12 @@ class TestSyncForkWorkflow(unittest.TestCase):
         cls.workflow = WORKFLOW.read_text().replace("\r\n", "\n")
         cls.lines = cls.workflow.splitlines()
 
-    def test_workflow_has_manual_and_scheduled_triggers(self):
+    def test_workflow_has_dispatch_and_scheduled_triggers(self):
         self.assertIn("  workflow_dispatch:", self.lines)
-        self.assertRegex(
-            self.workflow,
-            (r"(?m)^  schedule:\n"
-             r"^\s+- cron: (?P<quote>['\"]).+\s+\*\s+\*\s+\*(?P=quote)$"),
-        )
+        self.assertIn("  repository_dispatch:", self.lines)
+        self.assertIn("    types:", self.lines)
+        self.assertIn("    - upstream-master-push", self.lines)
+        self.assertIn('    - cron: "*/15 * * * *"', self.lines)
 
     def test_workflow_uses_write_permissions(self):
         self.assertIn("permissions:", self.lines)
@@ -58,15 +57,23 @@ class TestSyncForkWorkflow(unittest.TestCase):
         )
         self.assertIn("git fetch upstream master", self.workflow)
         self.assertIn("git merge --ff-only upstream/master", self.workflow)
-        self.assertIn("git merge --no-edit upstream/master", self.workflow)
         self.assertIn("git push origin HEAD:master", self.workflow)
 
-    def test_workflow_aborts_on_conflicts(self):
+    def test_workflow_resolves_conflicts_in_favor_of_upstream(self):
         self.assertIn(
-            'echo "::error::Automatic merge with upstream/master failed"',
+            "git merge -X theirs --no-commit upstream/master || true",
             self.workflow,
         )
-        self.assertIn("git merge --abort", self.workflow)
+        self.assertIn(
+            "git diff --name-only --diff-filter=U",
+            self.workflow,
+        )
+        self.assertIn(
+            ('git checkout --theirs -- "$path" 2>/dev/null || '
+             'git rm -f -- "$path"'),
+            self.workflow,
+        )
+        self.assertIn("git commit --no-edit", self.workflow)
 
 
 if __name__ == "__main__":
