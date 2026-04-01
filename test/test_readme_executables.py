@@ -44,8 +44,8 @@ class TestReadmeExecutables(unittest.TestCase):
             self.readme,
         )
         self.assertIn(
-            ('urlopen("https://api.github.com/repos/'
-             'Donovoi/gallery-dl/releases")'),
+            ('with urlopen("https://api.github.com/repos/'
+             'Donovoi/gallery-dl/releases") as response'),
             self.readme,
         )
         self.assertIn('endswith("-py3-none-any.whl")', self.readme)
