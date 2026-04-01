@@ -216,6 +216,8 @@ Python environment, install it, and run gallery-dl immediately:
 
 To download the latest mobile build with uv_, install it, and add
 gallery-dl to ``PATH`` for the current and future shells:
+This version avoids a shell heredoc so it can be pasted directly into
+Termux.
 
 .. code:: bash
 
