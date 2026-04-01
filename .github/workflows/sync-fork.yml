@@ -2,8 +2,11 @@ name: Sync Fork
 
 on:
   workflow_dispatch:
+  repository_dispatch:
+    types:
+    - upstream-master-push
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: write
@@ -40,12 +43,22 @@ jobs:
 
         if git merge --ff-only upstream/master; then
           echo "Fast-forwarded master to upstream/master"
-        elif git merge --no-edit upstream/master; then
-          echo "Merged upstream/master into fork master"
         else
-          echo "::error::Automatic merge with upstream/master failed"
-          git merge --abort
-          exit 1
+          git merge -X theirs --no-commit upstream/master || true
+
+          CONFLICTS="$(git diff --name-only --diff-filter=U)"
+          if [ -n "$CONFLICTS" ]; then
+            printf 'Resolving remaining merge conflicts in favor of upstream/master:\n%s\n' "$CONFLICTS"
+            while IFS= read -r path; do
+              if [ -n "$path" ]; then
+                git checkout --theirs -- "$path" 2>/dev/null || git rm -f -- "$path"
+              fi
+            done <<< "$CONFLICTS"
+          fi
+
+          git add -A
+          git commit --no-edit
+          echo "Merged upstream/master into fork master"
         fi
 
         git push origin HEAD:master
