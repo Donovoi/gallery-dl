@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
   repository_dispatch:
     types:
-    - upstream-master-push
+    - upstream_master_push
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "17 * * * *"
 
 permissions:
   contents: write
@@ -44,14 +44,26 @@ jobs:
         if git merge --ff-only upstream/master; then
           echo "Fast-forwarded master to upstream/master"
         else
-          git merge -X theirs --no-commit upstream/master || true
+          if git merge -X theirs --no-commit upstream/master; then
+            CONFLICTS=""
+          else
+            MERGE_STATUS=$?
+            CONFLICTS="$(git diff --name-only --diff-filter=U)"
+            if [ -z "$CONFLICTS" ]; then
+              echo "::error::Automatic merge with upstream/master failed"
+              exit "$MERGE_STATUS"
+            fi
+          fi
 
-          CONFLICTS="$(git diff --name-only --diff-filter=U)"
           if [ -n "$CONFLICTS" ]; then
             printf 'Resolving remaining merge conflicts in favor of upstream/master:\n%s\n' "$CONFLICTS"
             while IFS= read -r path; do
               if [ -n "$path" ]; then
-                git checkout --theirs -- "$path" 2>/dev/null || git rm -f -- "$path"
+                if git show ":3:$path" >/dev/null 2>&1; then
+                  git checkout --theirs -- "$path"
+                else
+                  git rm -f -- "$path"
+                fi
               fi
             done <<< "$CONFLICTS"
           fi
