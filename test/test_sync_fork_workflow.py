@@ -27,8 +27,11 @@ class TestSyncForkWorkflow(unittest.TestCase):
         self.assertIn("  workflow_dispatch:", self.lines)
         self.assertIn("  repository_dispatch:", self.lines)
         self.assertIn("    types:", self.lines)
-        self.assertIn("    - upstream-master-push", self.lines)
-        self.assertIn('    - cron: "*/15 * * * *"', self.lines)
+        self.assertIn("    - upstream_master_push", self.lines)
+        self.assertRegex(
+            self.workflow,
+            r'(?m)^\s+- cron: (?P<quote>[\'"])17 \* \* \* \*(?P=quote)$',
+        )
 
     def test_workflow_uses_write_permissions(self):
         self.assertIn("permissions:", self.lines)
@@ -57,11 +60,15 @@ class TestSyncForkWorkflow(unittest.TestCase):
         )
         self.assertIn("git fetch upstream master", self.workflow)
         self.assertIn("git merge --ff-only upstream/master", self.workflow)
+        self.assertIn(
+            "git merge -X theirs --no-commit upstream/master",
+            self.workflow,
+        )
         self.assertIn("git push origin HEAD:master", self.workflow)
 
     def test_workflow_resolves_conflicts_in_favor_of_upstream(self):
         self.assertIn(
-            "git merge -X theirs --no-commit upstream/master || true",
+            'echo "::error::Automatic merge with upstream/master failed"',
             self.workflow,
         )
         self.assertIn(
@@ -69,8 +76,15 @@ class TestSyncForkWorkflow(unittest.TestCase):
             self.workflow,
         )
         self.assertIn(
-            ('git checkout --theirs -- "$path" 2>/dev/null || '
-             'git rm -f -- "$path"'),
+            'if git show ":3:$path" >/dev/null 2>&1; then',
+            self.workflow,
+        )
+        self.assertIn(
+            'git checkout --theirs -- "$path"',
+            self.workflow,
+        )
+        self.assertIn(
+            'git rm -f -- "$path"',
             self.workflow,
         )
         self.assertIn("git commit --no-edit", self.workflow)
