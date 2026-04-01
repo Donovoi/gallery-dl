@@ -38,6 +38,13 @@ class TestReadmeExecutables(unittest.TestCase):
              r"&& python3 -m gallery_dl URL"),
         )
 
+    def test_nightly_builds_use_python_dash_c_for_uv_mobile_install(self):
+        self.assertRegex(
+            self.readme,
+            (r'WHEEL="\$\(uv run python -c .*?py3-none-any\.whl.*?\)" && \\'),
+        )
+        self.assertNotIn("uv run python - <<'PY'", self.readme)
+
 
 if __name__ == "__main__":
     unittest.main()
