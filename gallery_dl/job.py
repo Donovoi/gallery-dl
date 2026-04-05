@@ -706,7 +706,7 @@ class DownloadJob(Job):
         self.fallback = cfg("fallback", True)
         if not cfg("download", True):
             # monkey-patch method to do nothing and always return True
-            self.download = pathfmt.fix_extension
+            self.download = lambda *args, **kwargs: pathfmt.fix_extension()
 
         if archive_path := cfg("archive"):
             archive_table = cfg("archive-table")
