@@ -138,6 +138,8 @@ def nameext_from_name(filename, data=None):
 def filename_from_contentdisposition(cd):
     if (pos := cd.find("filename*=")) >= 0:
         pos += 10
+        if pos >= len(cd):
+            return ""
         if cd[pos] == '"':
             pos += 1
             value = cd[pos:cd.find('"', pos)]
@@ -152,6 +154,8 @@ def filename_from_contentdisposition(cd):
 
     if (pos := cd.find("filename=")) >= 0:
         pos += 9
+        if pos >= len(cd):
+            return ""
         if cd[pos] == '"':
             pos += 1
             value = cd[pos:cd.find('"', pos)]

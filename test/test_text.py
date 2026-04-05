@@ -276,6 +276,8 @@ class TestText(unittest.TestCase):
                            'creation-date="Wed, 12 Feb 2025 10:00:00 GMT"; '
                            '''filename*=UTF-8''re%20port.ext'''),
                          "re port.ext")
+        self.assertEqual(f("attachment; filename="), "")
+        self.assertEqual(f("attachment; filename*="), "")
 
     def test_extract(self, f=text.extract):
         txt = "<a><b>"

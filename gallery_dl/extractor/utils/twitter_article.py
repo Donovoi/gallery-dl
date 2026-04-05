@@ -8,12 +8,15 @@
 
 """Twitter article utilities"""
 
+import logging
+
 from ... import text
+
+log = logging.getLogger("twitter.article")
 
 
 def to_document(article, content=None):
     title = text.escape(article["title"])
-    cover = article["cover_media"]["media_info"]
 
     html = [f"""\
 <!DOCTYPE html>
@@ -24,12 +27,18 @@ def to_document(article, content=None):
     <style>{STYLESHEET}    </style>
     <title>{title}</title>
   </head>
-  <body>
+"""]
+    html.append("  <body>\n")
+    if cover := article.get("cover_media"):
+        if cover := cover.get("media_info"):
+            html.append(f"""\
   <img src="{text.escape(media_url(cover["original_img_url"]))}" \
 class="cover" alt="{title}">
+""")
+    html.append(f"""\
   <h1>{title}</h1>
 
-"""]
+""")
     html.extend(content or to_html(article))
     html.append("""\
   </body>
@@ -95,9 +104,7 @@ def process_block(html, blocks, i, entities, media):
         html.append(f"</{type[0]}l>\n")
 
     else:
-        import logging
-        logging.getLogger("twitter.article").warning(
-            "Unsupported block type %r", type)
+        log.warning("Unsupported block type %r", type)
 
     html.append("</section>\n\n")
     return i + 1
@@ -124,13 +131,6 @@ def process_entity(html, block, entity, media):
     elif type == "TWEMOJI":
         return
 
-        txt = block["text"]
-        r = block["entityRanges"][0]
-        li = r["length"]
-        ri = li + r["offset"]
-        block["text"] = \
-            f'{txt[:li]}<span class="emoji">{txt[li:ri]}</span>{txt[ri:]}'
-
     elif type == "LATEX":
         html.append(f"""\
 <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -142,33 +142,53 @@ def process_entity(html, block, entity, media):
 """)
 
     else:
-        import logging
-        logging.getLogger("twitter.article").warning(
-            "Unsupported entity type %r", type)
+        log.warning("Unsupported entity type %r", type)
 
 
 def process_text(html, block):
     txt = block["text"]
+    replacements = {}
     if data := block.get("data"):
         if mentions := data.get("mentions"):
             for r in mentions:
                 u = text.unescape(r["text"])
-                txt = (f'{txt[:r["fromIndex"]]}'
-                       f'<a href="https://x.com/@{u}">@{u}</a>'
-                       f'{txt[r["toIndex"]:]}')
+                replacements[r["fromIndex"]] = (
+                    r["toIndex"],
+                    f'<a href="https://x.com/@{u}">@{u}</a>',
+                )
         if urls := data.get("urls"):
             for r in urls:
                 u = text.unescape(r["text"])
-                txt = (f'{txt[:r["fromIndex"]]}'
-                       f'<a href="{u}">{u}</a>'
-                       f'{txt[r["toIndex"]:]}')
+                replacements[r["fromIndex"]] = (
+                    r["toIndex"],
+                    f'<a href="{u}">{u}</a>',
+                )
+
+    openings = {}
+    closings = {}
     if ranges := block.get("inlineStyleRanges"):
         for r in ranges:
             el = r["style"][0].lower()
-            li = r["length"]
-            ri = li + r["offset"]
-            txt = f'{txt[:li]}<{el}>{txt[li:ri]}</{el}>{txt[ri:]}'
-    html.append(txt)
+            openings.setdefault(r["offset"], []).append(el)
+            closings.setdefault(r["offset"] + r["length"], []).append(el)
+
+    result = []
+    pos = 0
+    while pos < len(txt):
+        for el in openings.get(pos, ()):
+            result.append(f"<{el}>")
+
+        if pos in replacements:
+            pos, replacement = replacements[pos]
+            result.append(replacement)
+        else:
+            result.append(txt[pos])
+            pos += 1
+
+        for el in reversed(closings.get(pos, ())):
+            result.append(f"</{el}>")
+
+    html.append("".join(result))
 
 
 def media_url(url, name="orig"):
@@ -221,5 +241,5 @@ img{max-width: 100%;}
 h1{font-size: 34px;}
 a{color: rgb(231, 233, 234);}
 a:hover{color: revert;}
-math{display="block";}
+math{display:block;}
 """

@@ -353,10 +353,11 @@ class Job():
                 predicates.append(util.predicate_date(
                     dtb or None, dta or None, extr.skip_date))
 
-            if ((wl := extr.config2("whitelist-tags", "tags-whitelist")) or
-                    (bl := extr.config2("blacklist-tags", "tags-blacklist"))):
+            wl = extr.config2("whitelist-tags", "tags-whitelist")
+            bl = extr.config2("blacklist-tags", "tags-blacklist")
+            if wl or bl:
                 tl = wl or bl
-                if tl == "/import":
+                if bl == "/import":
                     if extr.import_blacklist is None:
                         extr.log.warning("Blacklist import unsupported")
                     else:

@@ -107,6 +107,24 @@ class TestDownloadJob(TestJob):
         # no output if '_extractor' is overwritten (#8958)
         self.assertEqual(out, "11\n")
 
+    def test_tags_whitelist_import_value_is_not_treated_as_blacklist_import(
+            self):
+        config.set((), "tags-whitelist", "/import")
+
+        extr = TestExtractor.from_url("test:")
+        tjob = self.jobclass(extr)
+
+        with patch.object(extr, "import_blacklist") as import_blacklist, \
+                patch("gallery_dl.job.util.predicate_tags") as predicate_tags:
+            predicate = object()
+            predicate_tags.return_value = predicate
+
+            combined = tjob._prepare_predicates("post")
+
+        import_blacklist.assert_not_called()
+        predicate_tags.assert_called_once_with("/import", True)
+        self.assertIs(combined, predicate)
+
 
 class TestKeywordJob(TestJob):
     jobclass = job.KeywordJob
