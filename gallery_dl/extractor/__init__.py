@@ -294,8 +294,8 @@ def add(cls):
 def add_module(module):
     """Add all extractors in 'module' to the list of available extractors"""
     if classes := _get_classes(module):
-        if isinstance(classes[0].pattern, str):
-            for cls in classes:
+        for cls in classes:
+            if isinstance(cls.pattern, str):
                 cls.pattern = re_compile(cls.pattern)
         _cache.extend(classes)
     return classes

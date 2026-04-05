@@ -113,13 +113,10 @@ def build_setuptools():
             "extra": [
                 "requests[socks]",
                 "yt-dlp[default]",
-                "brotli",
                 "jinja2",
-                "psycopg[binary]",
                 "pyyaml",
                 "toml; python_version < '3.11'",
                 "truststore; python_version >= '3.10'",
-                "zstandard",
                 "secretstorage; sys_platform == 'linux'",
             ],
         },
