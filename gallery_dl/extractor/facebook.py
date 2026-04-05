@@ -461,6 +461,9 @@ class FacebookSetExtractor(FacebookExtractor):
             set_id = post["set_id"]
             if not set_id:
                 params = text.parse_query(post["post_photo"].partition("?")[2])
+                if "fbid" not in params:
+                    raise self.exc.AbortExtraction(
+                        "Unable to determine photo ID from post URL")
                 self.groups = (params["fbid"],)
                 return FacebookPhotoExtractor.items(self)
             self._detect_jump = False
