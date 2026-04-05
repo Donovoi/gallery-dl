@@ -595,7 +595,9 @@ def load_test_config():
         sys.exit(f"Error when loading {path}: {exc.__class__.__name__}: {exc}")
 
 
-def extractor_find_external(result, imported=set()):
+def extractor_find_external(result, imported=None):
+    if imported is None:
+        imported = set()
     _module_iter_orig = extractor._module_iter
     try:
         file = sys.modules[result["#class"].__module__].__file__

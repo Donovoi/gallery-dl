@@ -138,6 +138,16 @@ class TestCache(unittest.TestCase):
         self._eq(up, 0, (1, 0, 0))
         self._eq(up, 9, (2, 0, 0))
 
+    def test_update_none_key_uses_default_cache_key(self):
+        def up(a, b, c):
+            return a+b+c
+        up.__module__ = "test"
+
+        self.cache_update(up, None, 7, _mem=True)
+
+        self.assertEqual(CACHE["test.up"], (7, 0))
+        self.assertNotIn("test.up-None", CACHE)
+
     def test_update_mem(self):
         def up(a, b, c):
             return a+b+c

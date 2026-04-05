@@ -402,7 +402,7 @@ class Extractor():
         return value
 
     def cache_update(self, func, key=..., value=None, _exp=0, _mem=False):
-        if key is ...:
+        if key is ... or key is None:
             key = f"{func.__module__}.{func.__name__}"
         else:
             key = f"{func.__module__}.{func.__name__}-{key}"
