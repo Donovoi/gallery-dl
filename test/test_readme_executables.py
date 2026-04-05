@@ -38,19 +38,23 @@ class TestReadmeExecutables(unittest.TestCase):
              r"&& python3 -m gallery_dl URL"),
         )
 
-    def test_nightly_builds_use_python_dash_c_for_uv_mobile_install(self):
+    def test_nightly_builds_use_fixed_python_dash_c_for_uv_mobile_install(self):
         self.assertRegex(
             self.readme,
             (
                 r"(?s)WHEEL=\"\$\(uv run python -c\s+.*?"
-                r"with urlopen\((['\"])https://api\.github\.com/repos/"
-                r"Donovoi/gallery-dl/releases\1\)\s+as response.*?"
+                r"json\.load\(urlopen\((['\"])https://api\.github\.com/repos/"
+                r"Donovoi/gallery-dl/releases\1\)\).*?"
                 r"endswith\((['\"])-py3-none-any\.whl\2\)"
             ),
         )
         self.assertNotRegex(
             self.readme,
             r"uv run python\s*-\s*<<\s*(['\"]?)PY\1",
+        )
+        self.assertNotRegex(
+            self.readme,
+            r"uv run python -c\s+['\"].*?\bwith urlopen\(",
         )
 
 
