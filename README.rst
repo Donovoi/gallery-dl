@@ -221,15 +221,7 @@ Termux.
 
 .. code:: bash
 
-    WHEEL="$(uv run python -c 'import json, sys; from pathlib import Path; '\
-    'from urllib.request import urlopen, urlretrieve; '\
-    'with urlopen("https://api.github.com/repos/Donovoi/gallery-dl/releases") as response: releases = json.load(response); '\
-    'asset = next((asset for release in releases if release["prerelease"] '\
-    'for asset in release["assets"] if asset["name"].endswith("-py3-none-any.whl")), None) '\
-    'or sys.exit("could not find a mobile py3-none-any wheel in the latest prerelease builds"); '\
-    'path = Path.home() / ".cache" / "gallery-dl" / asset["name"]; '\
-    'path.parent.mkdir(parents=True, exist_ok=True); '\
-    'urlretrieve(asset["browser_download_url"], path); print(path)')" && \
+    WHEEL="$(uv run python -c 'import json, sys; from pathlib import Path; from urllib.request import urlopen, urlretrieve; with urlopen("https://api.github.com/repos/Donovoi/gallery-dl/releases") as response: releases = json.load(response); asset = next((asset for release in releases if release["prerelease"] for asset in release["assets"] if asset["name"].endswith("-py3-none-any.whl")), None) or sys.exit("could not find a mobile py3-none-any wheel in the latest prerelease builds"); path = Path.home() / ".cache" / "gallery-dl" / asset["name"]; path.parent.mkdir(parents=True, exist_ok=True); urlretrieve(asset["browser_download_url"], path); print(path)')" && \
     (uv tool uninstall gallery-dl >/dev/null 2>&1 || true) && \
     uv tool install "$WHEEL" && \
     BIN_DIR="$(uv tool dir --bin)" && \
