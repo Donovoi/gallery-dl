@@ -22,7 +22,6 @@
 ## General Options:
     -h, --help                  Print this help message and exit
     --version                   Print program version and exit
-    --install-deps              Install optional README dependencies and exit
     -f, --filename FORMAT       Filename format string for downloaded files
                                 ('/O' for "original" filenames)
     -d, --destination PATH      Target location for file downloads
@@ -138,10 +137,7 @@
                                 Too Many Requests' response
 
 ## Configuration Options:
-    -o, --option KEY=VALUE      Additional options. Examples: -o
-                                browser=firefox, -o
-                                downloader.http.aria2c=true, or -o
-                                downloader.http.aria2c=/usr/local/bin/aria2c
+    -o, --option KEY=VALUE      Additional options. Example: -o browser=firefox
     -c, --config FILE           Additional configuration files in default
                                 format
     --config-json FILE          Additional configuration files in JSON format

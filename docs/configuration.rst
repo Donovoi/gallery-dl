@@ -600,7 +600,6 @@ Default
         ``[Danbooru]``      |
         ``[E621]``          |
         ``[foolfuuka]:search`` |
-        ``hdoujin``         |
         ``itaku``           |
         ``newgrounds``      |
         ``[nitter]``        |
@@ -636,7 +635,6 @@ Default
         ``[Nijie]``
     ``"3.0-6.0"``
         ``bilibili``        |
-        ``exhentai``        |
         ``[reactor]``       |
         ``readcomiconline``
     ``"6.0-6.1"``
@@ -674,7 +672,6 @@ Description
     * ``e621`` (`* <pw-apikey_>`__)
     * ``e6ai`` (`* <pw-apikey_>`__)
     * ``e926`` (`* <pw-apikey_>`__)
-    * ``exhentai``
     * ``girlswithmuscle``
     * ``horne`` (`R <pw-required_>`__)
     * ``idolcomplex``
@@ -2292,6 +2289,7 @@ Description
 Available Types
     * ``image``
     * ``video``
+    * ``cover``
     * ``download``
     * ``gallery``
 
@@ -3104,141 +3102,6 @@ Description
     Include reposts when extracting albums from a user profile.
 
 
-extractor.exhentai.domain
--------------------------
-Type
-    ``string``
-Default
-    ``"auto"``
-Description
-    ``"auto"``
-        Use ``e-hentai.org`` or ``exhentai.org``
-        depending on the input URL
-    ``"e-hentai.org"``
-        Use ``e-hentai.org`` for all URLs
-    ``"exhentai.org"``
-        Use ``exhentai.org`` for all URLs
-
-
-extractor.exhentai.fallback-retries
------------------------------------
-Type
-    ``integer``
-Default
-    ``2``
-Description
-    Number of times a failed image gets retried
-    or ``-1`` for infinite retries.
-
-
-extractor.exhentai.fav
-----------------------
-Type
-    ``string``
-Example
-    ``"4"``
-Description
-    After downloading a gallery,
-    add it to your account's favorites as the given category number.
-Note
-    Set this to `"favdel"` to remove galleries from your favorites.
-
-    This will remove any Favorite Notes when applied
-    to already favorited galleries.
-
-
-extractor.exhentai.gp
----------------------
-Type
-    ``string``
-Default
-    ``"resized"``
-Description
-    Selects how to handle "you do not have enough GP" errors.
-
-    * `"resized"`: Continue downloading `non-original <extractor.exhentai.original_>`__ images.
-    * `"stop"`: Stop the current extractor run.
-    * `"wait"`: Wait for user input before retrying the current image.
-
-
-extractor.exhentai.limits
--------------------------
-Type
-    ``integer``
-Default
-    ``null``
-Description
-    Set a custom image download limit and perform
-    `limits-action <extractor.exhentai.limits-action_>`__
-    when it gets exceeded.
-
-
-extractor.exhentai.limits-action
---------------------------------
-Type
-    ``string``
-Default
-    ``"stop"``
-Description
-    Action to perform when the image limit is exceeded.
-
-    * `"stop"`: Stop the current extractor run.
-    * `"wait"`: Wait for user input.
-    * `"reset"`: Spend GP to reset your account's image limits.
-
-
-extractor.exhentai.metadata
----------------------------
-Type
-    ``bool``
-Default
-    ``false``
-Description
-    Load extended gallery metadata from the
-    `API <https://ehwiki.org/wiki/API#Gallery_Metadata>`_.
-
-    * Adds ``archiver_key``, ``posted``, and ``torrents``
-    * Provides exact ``date`` and ``filesize``
-
-
-extractor.exhentai.original
----------------------------
-Type
-    ``bool``
-Default
-    ``true``
-Description
-    Download full-sized original images if available.
-
-
-extractor.exhentai.source
--------------------------
-Type
-    ``string``
-Default
-    ``"gallery"``
-Description
-    Selects an alternative source to download files from.
-
-    ``"hitomi"``
-         Download the corresponding gallery from ``hitomi.la``
-    ``"metadata"``
-        Load only a gallery's metadata from the
-        `API <https://ehwiki.org/wiki/API#Gallery_Metadata>`_
-
-
-extractor.exhentai.tags
------------------------
-Type
-    ``bool``
-Default
-    ``true``
-Description
-    Group ``tags`` by type and
-    provide them as ``tags_<type>`` metadata fields,
-    for example ``tags_artist`` or ``tags_character``.
-
-
 extractor.facebook.author-followups
 -----------------------------------
 Type
@@ -3717,136 +3580,6 @@ Description
     Recursively download files from subfolders.
 
 
-extractor.hdoujin.cbz
----------------------
-Type
-    ``bool``
-Default
-    ``false``
-Description
-    Download each gallery as a single ``.cbz`` file.
-Note
-    Requires a
-    `token <extractor.hdoujin.token_>`__
-
-
-extractor.hdoujin.crt
----------------------
-Type
-    ``string``
-Example
-    * ``"0542daa9-352c-4fd5-a497-6c6d5cf07423"``
-    * ``"/12345/a1b2c3d4e5f6?crt=0542daa9-352c-4fd5-a497-6c6d5cf07423"``
-Description
-    The ``crt`` query parameter value
-    sent when fetching gallery data.
-
-    To get this value:
-
-    * Open your browser's Developer Tools (F12)
-    * Select `Network` → `XHR`
-    * Open a gallery page
-    * Select the last `Network` entry and copy its ``crt`` value
-Note
-    You will also need your browser's
-    `user-agent <extractor.*.user-agent_>`__
-
-
-extractor.hdoujin.format
-------------------------
-Type
-    * ``string``
-    * ``list`` of ``strings``
-Default
-    ``["0", "1600", "1280", "980", "780"]``
-Description
-    Name(s) of the image format to download.
-
-    When more than one format is given, the first available one is selected.
-
-    | Possible formats are
-    | ``"780"``, ``"980"``, ``"1280"``, ``"1600"``, ``"0"`` (original)
-
-
-extractor.hdoujin.tags
-----------------------
-Type
-    ``bool``
-Default
-    ``false``
-Description
-    Group ``tags`` by type and
-    provide them as ``tags_<type>`` metadata fields,
-    for example ``tags_artist`` or ``tags_character``.
-
-
-extractor.hdoujin.token
------------------------
-Type
-    ``string``
-Example
-    * ``"3f1a9b72-4e4d-4f4e-9e5d-4a2b99f7c893"``
-    * ``"Bearer 3f1a9b72-4e4d-4f4e-9e5d-4a2b99f7c893"``
-    * ``"Authorization: Bearer 3f1a9b72-4e4d-4f4e-9e5d-4a2b99f7c893"``
-Description
-    ``Authorization`` header value
-    used for requests to ``https://api.hdoujin.org``
-    to access ``favorite`` galleries
-    or download
-    `.cbz <extractor.hdoujin.cbz_>`__
-    archives.
-
-
-extractor.hentaifoundry.descriptions
-------------------------------------
-Type
-    ``string``
-Default
-    ``"text"``
-Description
-    Controls the format of ``description`` metadata fields.
-
-    ``"text"``
-        Plain text with HTML tags removed
-    ``"html"``
-        Raw HTML content
-
-
-extractor.hentaifoundry.include
--------------------------------
-Type
-    * ``string``
-    * ``list`` of ``strings``
-Default
-    ``"pictures"``
-Example
-    * ``"scraps,stories"``
-    * ``["scraps", "stories"]``
-Description
-    A (comma-separated) list of subcategories to include
-    when processing a user profile.
-Supported Values
-    * ``pictures``
-    * ``scraps``
-    * ``stories``
-    * ``favorite``
-Note
-    It is possible to use ``"all"`` instead of listing all values separately.
-
-
-extractor.hitomi.format
------------------------
-Type
-    ``string``
-Default
-    ``"webp"``
-Description
-    Selects which image format to download.
-Available Formats
-    * ``"webp"``
-    * ``"avif"``
-
-
 extractor.imagechest.access-token
 ---------------------------------
 Type
@@ -4039,9 +3772,14 @@ Note
 extractor.instagram.previews
 ----------------------------
 Type
-    ``bool``
+    * ``bool``
+    * ``string``
+    * ``list`` of ``strings``
 Default
     ``false``
+Example
+    * ``"video"``
+    * ``["audio", "video"]``
 Description
     Download video previews and audio covers.
 
@@ -5904,89 +5642,6 @@ Description
     Download videos.
 
 
-extractor.schalenetwork.cbz
----------------------------
-Type
-    ``bool``
-Default
-    ``false``
-Description
-    Download each gallery as a single ``.cbz`` file.
-Note
-    Requires a
-    `token <extractor.schalenetwork.token_>`__
-
-
-extractor.schalenetwork.crt
----------------------------
-Type
-    ``string``
-Example
-    * ``"0542daa9-352c-4fd5-a497-6c6d5cf07423"``
-    * ``"/12345/a1b2c3d4e5f6?crt=0542daa9-352c-4fd5-a497-6c6d5cf07423"``
-Description
-    The ``crt`` query parameter value
-    sent when fetching gallery data.
-
-    To get this value:
-
-    * Open your browser's Developer Tools (F12)
-    * Select `Network` → `XHR`
-    * Open a gallery page
-    * Select the last `Network` entry and copy its ``crt`` value
-Note
-    You will also need your browser's
-    `user-agent <extractor.*.user-agent_>`__
-
-
-extractor.schalenetwork.format
-------------------------------
-Type
-    * ``string``
-    * ``list`` of ``strings``
-Default
-    ``["0", "1600", "1280", "980", "780"]``
-Description
-    Name(s) of the image format to download.
-
-    When more than one format is given, the first available one is selected.
-Formats
-    * ``"780"``
-    * ``"980"``
-    * ``"1280"``
-    * ``"1600"``
-    * ``"0"`` (original)
-
-
-extractor.schalenetwork.tags
-----------------------------
-Type
-    ``bool``
-Default
-    ``true``
-Description
-    Group ``tags`` by type and
-    provide them as ``tags_<type>`` metadata fields,
-    for example ``tags_artist`` or ``tags_character``.
-
-
-extractor.schalenetwork.token
------------------------------
-Type
-    ``string``
-Example
-    * ``"3f1a9b72-4e4d-4f4e-9e5d-4a2b99f7c893"``
-    * ``"Bearer 3f1a9b72-4e4d-4f4e-9e5d-4a2b99f7c893"``
-    * ``"Authorization: Bearer 3f1a9b72-4e4d-4f4e-9e5d-4a2b99f7c893"``
-Description
-    ``Authorization`` header value
-    used for requests to ``https://api.schale.network``
-    to access ``favorite`` galleries
-    or download
-    `.cbz <extractor.schalenetwork.cbz_>`__
-    archives.
-
-
 extractor.sexcom.gifs
 ---------------------
 Type
@@ -6721,11 +6376,31 @@ Description
 extractor.twitter.articles
 --------------------------
 Type
-    ``bool``
+    * ``bool``
+    * ``string``
+    * ``list`` of ``strings``
 Default
     ``true``
+Example
+    ``["media", "document", "metadata"]``
 Description
-    Download media embedded in articles.
+    Process `article` Tweets.
+
+    It is possible to select which files to download
+    and what article metadata to extract
+    by specifying a list of targets:
+
+    ``cover``
+        Download article cover images
+    ``media``
+        Download article media files
+    ``html``
+        Extract article content as ``html`` metadata
+    ``metadata`` | ``meta``
+        Extract ``article`` metadata
+        (``id``, ``title``, ``date``, ``date_updated``)
+    ``document`` | ``doc``
+        Download article contents as HTML document
 
 
 extractor.twitter.cards
@@ -6960,11 +6635,12 @@ Description
     Extract additional metadata for user accounts (``author``, ``user``)
 
     * ``based_in``
+    * ``friends_mutual``
     * ``location_accurate``
     * ``name_changes``
     * ``source``
 Note
-    This requires 1 additional HTTP request per user.
+    This requires 2 additional HTTP request per user.
 
 
 extractor.twitter.pinned
@@ -8282,107 +7958,6 @@ Description
     when expecting a media file instead.
 
 
-downloader.http.aria2c
-----------------------
-Type
-    * ``bool``
-    * ``string``
-Default
-    ``false``
-Example
-    ``true``, ``"/usr/local/bin/aria2c"``
-Description
-    Use `aria2c <https://aria2.github.io/>`__ as the HTTP download engine
-    instead of the built-in streaming downloader.
-
-    Set to ``true`` to use ``aria2c`` from ``PATH``,
-    or set to the absolute path of the ``aria2c`` binary.
-
-    If ``aria2c`` is enabled but missing, gallery-dl will try to install
-    it automatically before falling back to the built-in downloader.
-
-    **Quick start**
-
-    .. code:: json
-
-        {
-            "downloader": {
-                "http": {
-                    "aria2c": true
-                }
-            }
-        }
-
-    With this setting, gallery-dl will prefer ``aria2c`` for eligible
-    HTTP/HTTPS file downloads while keeping the built-in downloader as the
-    automatic fallback for everything else.
-
-    When enabled, gallery-dl invokes ``aria2c`` as a subprocess for each
-    eligible download and keeps multiple eligible file downloads in flight in
-    parallel.  The terminal UI is refreshed on each aria2c status change to
-    show a dashboard with per-file URLs, progress percentages, transfer
-    speeds, and recent issues.  The following session context is forwarded
-    automatically:
-
-    - HTTP headers (including ``User-Agent``)
-    - Session cookies
-    - Proxy settings (``downloader.*.proxy``)
-    - SSL certificate verification (``downloader.*.verify``)
-
-    For throughput, gallery-dl uses the following aria2c tuning flags by
-    default for each eligible single-file download:
-
-    - ``--split=16``
-    - ``--max-connection-per-server=16``
-    - ``--min-split-size=1M``
-    - ``--file-allocation=none``
-
-    This biases aria2c toward maximum download speed by opening multiple
-    parallel HTTP ranges against the same file and avoiding preallocation
-    overhead.
-
-    Partial-download resumption is supported: if a previous ``aria2c``
-    download was interrupted (leaving an ``.aria2`` control file alongside
-    the ``.part`` file), the download will be resumed automatically.
-
-    **Limitations / automatic fallback to built-in downloader**
-
-    aria2c is used only for plain HTTP/HTTPS ``GET`` requests with a known
-    filename extension.  The following cases always fall back to the
-    built-in downloader transparently:
-
-    - Non-``GET`` methods (e.g. ``POST``)
-    - Downloads that use a request body (``_http_data``)
-    - Downloads that require custom response-object validation
-      (``_http_validate`` / ``_http_retry`` / ``_http_expected_status``)
-    - Downloads where the filename extension must be inferred from the
-      ``Content-Type`` response header (``metadata`` / unknown extension)
-    - Segmented downloads (``_http_segmented``)
-
-    If ``aria2c`` cannot be found at the configured path, a warning is
-    logged and the built-in downloader is used for all subsequent downloads
-    in that session.
-
-    ``Last-Modified``-based ``mtime`` stamping is not available when using
-    aria2c because the HTTP response headers are not accessible after the
-    subprocess exits.
-
-
-downloader.http.max-concurrent-downloads
-----------------------------------------
-Type
-    ``integer``
-Default
-    ``16``
-Description
-    Maximum number of eligible HTTP/HTTPS downloads to keep in flight when
-    using the ``aria2c`` backend.
-
-    Lower values reduce the amount of bandwidth gallery-dl can consume at
-    once and can leave more room for regular browsing or streaming, while
-    higher values bias towards faster bulk downloads.
-
-
 downloader.ytdl.cmdline-args
 ----------------------------
 Type
@@ -8474,8 +8049,7 @@ Description
     The ``ytdl`` |Module|_ to import.
 
     Setting this to ``null`` will try to import ``"yt_dlp"``
-    followed by ``"youtube_dl"`` as fallback, automatically installing the
-    missing Python package first when necessary.
+    followed by ``"youtube_dl"`` as fallback.
 
 
 downloader.ytdl.outtmpl
@@ -10107,7 +9681,6 @@ Special Values
                 "coomer"       : "coomerparty",
                 "kemono"       : "kemonoparty",
                 "turbo"        : "saint",
-                "schalenetwork": "koharu",
                 "naver-chzzk"  : "chzzk",
                 "naver-blog"   : "naver",
                 "naver-webtoon": "naverwebtoon",
@@ -10130,7 +9703,6 @@ Default
             "coomerparty"  : "coomer",
             "kemonoparty"  : "kemono",
             "giantessbooru": "sizebooru",
-            "koharu"       : "schalenetwork",
             "chzzk"        : "naver-chzzk",
             "naver"        : "naver-blog",
             "naverwebtoon" : "naver-webtoon",
@@ -10748,7 +10320,7 @@ Example
             "compression": "store",
             "extension"  : "cbz",
             "filter"     : "extension not in ('zip', 'rar')",
-            "whitelist"  : ["mangadex", "exhentai", "nhentai"]
+            "whitelist"  : ["mangadex", "pixiv"]
         }
 Description
     An ``object`` containing a ``"name"`` attribute specifying the

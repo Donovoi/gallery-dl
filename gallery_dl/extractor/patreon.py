@@ -126,12 +126,7 @@ class PatreonExtractor(Extractor):
             for img in text.extract_iter(
                     content, '><figure><img src="', '>'):
                 url = text.unescape(img[:img.find('"')])
-                data = {
-                    "media_id": (
-                        text.extr(img, 'data-media-id="', '"') or
-                        text.extr(img, 'media_id="', '"')
-                    )
-                }
+                data = {"media_id": text.extr(img, 'media_id="', '"')}
                 yield "content", data, url, self._filename(url) or url
 
     def posts(self):
@@ -255,8 +250,8 @@ class PatreonExtractor(Extractor):
     def _filename(self, url):
         """Fetch filename from an URL's Content-Disposition header"""
         response = self.request(url, method="HEAD", fatal=False)
-        cd = response.headers.get("Content-Disposition")
-        return text.extr(cd, 'filename="', '"')
+        return text.filename_from_contentdisposition(
+            response.headers.get("content-disposition", ""))
 
     def _filehash(self, url):
         """Extract MD5 hash from a download URL"""
