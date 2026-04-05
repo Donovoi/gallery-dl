@@ -23,12 +23,14 @@ class TestSyncForkWorkflow(unittest.TestCase):
         cls.workflow = WORKFLOW.read_text().replace("\r\n", "\n")
         cls.lines = cls.workflow.splitlines()
 
-    def test_workflow_has_manual_and_scheduled_triggers(self):
+    def test_workflow_has_dispatch_and_scheduled_triggers(self):
         self.assertIn("  workflow_dispatch:", self.lines)
+        self.assertIn("  repository_dispatch:", self.lines)
+        self.assertIn("    types:", self.lines)
+        self.assertIn("      - upstream_master_push", self.lines)
         self.assertRegex(
             self.workflow,
-            (r"(?m)^  schedule:\n"
-             r"^\s+- cron: (?P<quote>['\"]).+\s+\*\s+\*\s+\*(?P=quote)$"),
+            r'(?m)^\s+- cron: (?P<quote>[\'"])17 \* \* \* \*(?P=quote)$',
         )
 
     def test_workflow_uses_write_permissions(self):
@@ -58,15 +60,34 @@ class TestSyncForkWorkflow(unittest.TestCase):
         )
         self.assertIn("git fetch upstream master", self.workflow)
         self.assertIn("git merge --ff-only upstream/master", self.workflow)
-        self.assertIn("git merge --no-edit upstream/master", self.workflow)
+        self.assertIn(
+            "git merge -X theirs --no-commit upstream/master",
+            self.workflow,
+        )
         self.assertIn("git push origin HEAD:master", self.workflow)
 
-    def test_workflow_aborts_on_conflicts(self):
+    def test_workflow_resolves_conflicts_in_favor_of_upstream(self):
         self.assertIn(
             'echo "::error::Automatic merge with upstream/master failed"',
             self.workflow,
         )
-        self.assertIn("git merge --abort", self.workflow)
+        self.assertIn(
+            "git diff --name-only --diff-filter=U",
+            self.workflow,
+        )
+        self.assertIn(
+            'if git show ":3:$path" >/dev/null 2>&1; then',
+            self.workflow,
+        )
+        self.assertIn(
+            'git checkout --theirs -- "$path"',
+            self.workflow,
+        )
+        self.assertIn(
+            'git rm -f -- "$path"',
+            self.workflow,
+        )
+        self.assertIn("git commit --no-edit", self.workflow)
 
 
 if __name__ == "__main__":
