@@ -157,7 +157,7 @@ class PathFormat():
             if "r" in mode:
                 # '.part' file no longer exists
                 return util.NullContext()
-            os.makedirs(self.realdirectory, exist_ok=True)
+            os.makedirs(self.realdirectory)
             return open(self.temppath, mode)
 
     def exists(self):

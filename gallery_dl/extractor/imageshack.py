@@ -40,7 +40,6 @@ class ImageshackExtractor(Extractor):
             yield Message.Url, url, img
 
     def request_api(self, endpoint, params):
-        endpoint = endpoint.lstrip("/")
         url = f"{self.root}/rest_api/{endpoint}"
         params["ts"] = int(time.time())
         headers = {

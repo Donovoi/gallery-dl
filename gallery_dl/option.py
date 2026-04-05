@@ -12,7 +12,7 @@ import argparse
 import logging
 import os.path
 import sys
-from . import dependency, job, util, version
+from . import job, util, version
 
 
 class ConfigAction(argparse.Action):
@@ -43,13 +43,6 @@ class DeprecatedConfigConstAction(argparse.Action):
             f"Warning: {'/'.join(self.option_strings)} is deprecated. "
             f"Use {self.choices} instead.\n")
         namespace.options.append(((), self.dest, self.const))
-
-
-class InstallDependenciesAction(argparse.Action):
-    """Install all optional dependencies and exit"""
-    def __call__(self, parser, namespace, values, option_string=None):
-        status = 0 if dependency.install_optional_dependencies() else 1
-        parser.exit(status)
 
 
 class ConfigParseAction(argparse.Action):
@@ -258,12 +251,6 @@ def build_parser():
         "--version",
         action="version", version=version.__version__,
         help="Print program version and exit",
-    )
-    general.add_argument(
-        "--install-deps",
-        action=InstallDependenciesAction,
-        nargs=0,
-        help="Install optional README dependencies and exit",
     )
     general.add_argument(
         "-f", "--filename",
@@ -619,9 +606,7 @@ def build_parser():
         dest="options", metavar="KEY=VALUE",
         action=ConfigParseAction, default=[],
         help=("Additional options. "
-              "Examples: -o browser=firefox, "
-              "-o downloader.http.aria2c=true, or "
-              "-o downloader.http.aria2c=/usr/local/bin/aria2c"),
+              "Example: -o browser=firefox")   ,
     )
     configuration.add_argument(
         "-c", "--config",

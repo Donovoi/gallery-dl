@@ -1,101 +1,155 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# Copyright 2021 Mike Fährmann
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+
 import os
 import sys
 import unittest
-from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from gallery_dl import output, config  # noqa E402
+from gallery_dl import output  # noqa E402
 
 
-class TestDashboardOutput(unittest.TestCase):
+class TestShorten(unittest.TestCase):
 
-    def tearDown(self):
-        config.clear()
+    def test_shorten_noop(self, f=output.shorten_string):
+        self.assertEqual(f(""      , 10), "")
+        self.assertEqual(f("foobar", 10), "foobar")
 
-    @patch("gallery_dl.output.stderr_write_flush")
-    def test_dashboard_renders_url_progress_and_issues(self, write):
-        out = output.TerminalOutput()
+    def test_shorten(self, f=output.shorten_string):
+        s = "01234567890123456789"  # string of length 20
+        self.assertEqual(f(s, 30), s)
+        self.assertEqual(f(s, 25), s)
+        self.assertEqual(f(s, 20), s)
+        self.assertEqual(f(s, 19), "012345678…123456789")
+        self.assertEqual(f(s, 18), "01234567…123456789")
+        self.assertEqual(f(s, 17), "01234567…23456789")
+        self.assertEqual(f(s, 16), "0123456…23456789")
+        self.assertEqual(f(s, 15), "0123456…3456789")
+        self.assertEqual(f(s, 14), "012345…3456789")
+        self.assertEqual(f(s, 13), "012345…456789")
+        self.assertEqual(f(s, 12), "01234…456789")
+        self.assertEqual(f(s, 11), "01234…56789")
+        self.assertEqual(f(s, 10), "0123…56789")
+        self.assertEqual(f(s, 9) , "0123…6789")
+        self.assertEqual(f(s, 3) , "0…9")
+        self.assertEqual(f(s, 2) , "…9")
 
-        out.dashboard_enqueue(1, "https://example.org/file.jpg")
-        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
-        out.dashboard_progress(1, 100, 50, 25)
-        out.dashboard_issue(1, "network hiccup")
-        out.dashboard_success(1, "file.jpg")
+    def test_shorten_separator(self, f=output.shorten_string):
+        s = "01234567890123456789"  # string of length 20
+        self.assertEqual(f(s, 20, "|---|"), s)
+        self.assertEqual(f(s, 19, "|---|"), "0123456|---|3456789")
+        self.assertEqual(f(s, 15, "|---|"), "01234|---|56789")
+        self.assertEqual(f(s, 10, "|---|"), "01|---|789")
 
-        rendered = "".join(call.args[0] for call in write.call_args_list)
-        final_render = write.call_args_list[-1].args[0]
-        self.assertIn("gallery-dl aria2c dashboard", rendered)
-        self.assertIn(" 50%", rendered)
-        self.assertIn("#####-----", rendered)
-        self.assertIn("B/s", rendered)
-        self.assertIn("network hiccup", rendered)
-        self.assertIn("RUN:1  DONE:0  SKIP:0  ERR:0", rendered)
-        self.assertIn("RUN:0  DONE:1  SKIP:0  ERR:0", rendered)
-        self.assertNotIn("[DONE]", final_render)
-        self.assertNotIn("#####-----", final_render)
-        self.assertNotIn("B/s file.jpg", final_render)
+        self.assertEqual(f(s, 19, "..."), "01234567...23456789")
+        self.assertEqual(f(s, 19, "..") , "01234567..123456789")
+        self.assertEqual(f(s, 19, ".")  , "012345678.123456789")
+        self.assertEqual(f(s, 19, "")   , "0123456780123456789")
 
-    @patch("gallery_dl.output.stderr_write_flush")
-    def test_color_dashboard_uses_ansi_and_unicode_progress(self, write):
-        out = output.ColorOutput()
 
-        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
-        out.dashboard_progress(1, 100, 50, 25)
+class TestShortenEAW(unittest.TestCase):
 
-        rendered = "".join(call.args[0] for call in write.call_args_list)
-        self.assertIn("\x1b[1;34m▶\x1b[0m", rendered)
-        self.assertIn("\x1b[1;34m█", rendered)
-        self.assertIn("\x1b[0;37m░", rendered)
-        self.assertIn("[", rendered)
-        self.assertIn("file.jpg", rendered)
+    def test_shorten_eaw_noop(self, f=output.shorten_string_eaw):
+        self.assertEqual(f(""      , 10), "")
+        self.assertEqual(f("foobar", 10), "foobar")
 
-    @patch("gallery_dl.output.stderr_write_flush")
-    def test_dashboard_clamps_progress_to_total(self, write):
-        out = output.TerminalOutput()
+    def test_shorten_eaw(self, f=output.shorten_string_eaw):
+        s = "01234567890123456789"  # 20 ascii characters
+        self.assertEqual(f(s, 30), s)
+        self.assertEqual(f(s, 25), s)
+        self.assertEqual(f(s, 20), s)
+        self.assertEqual(f(s, 19), "012345678…123456789")
+        self.assertEqual(f(s, 18), "01234567…123456789")
+        self.assertEqual(f(s, 17), "01234567…23456789")
+        self.assertEqual(f(s, 16), "0123456…23456789")
+        self.assertEqual(f(s, 15), "0123456…3456789")
+        self.assertEqual(f(s, 14), "012345…3456789")
+        self.assertEqual(f(s, 13), "012345…456789")
+        self.assertEqual(f(s, 12), "01234…456789")
+        self.assertEqual(f(s, 11), "01234…56789")
+        self.assertEqual(f(s, 10), "0123…56789")
+        self.assertEqual(f(s, 9) , "0123…6789")
+        self.assertEqual(f(s, 3) , "0…9")
+        self.assertEqual(f(s, 2) , "…9")
 
-        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
-        out.dashboard_progress(1, 100, 150, 25)
+    def test_shorten_eaw_wide(self, f=output.shorten_string_eaw):
+        s = "幻想郷幻想郷幻想郷幻想郷"  # 12 wide characters
+        self.assertEqual(f(s, 30), s)
+        self.assertEqual(f(s, 25), s)
+        self.assertEqual(f(s, 20), "幻想郷幻…想郷幻想郷")
+        self.assertEqual(f(s, 19), "幻想郷幻…想郷幻想郷")
+        self.assertEqual(f(s, 18), "幻想郷幻…郷幻想郷")
+        self.assertEqual(f(s, 17), "幻想郷幻…郷幻想郷")
+        self.assertEqual(f(s, 16), "幻想郷…郷幻想郷")
+        self.assertEqual(f(s, 15), "幻想郷…郷幻想郷")
+        self.assertEqual(f(s, 14), "幻想郷…幻想郷")
+        self.assertEqual(f(s, 13), "幻想郷…幻想郷")
+        self.assertEqual(f(s, 12), "幻想…幻想郷")
+        self.assertEqual(f(s, 11), "幻想…幻想郷")
+        self.assertEqual(f(s, 10), "幻想…想郷")
+        self.assertEqual(f(s, 9) , "幻想…想郷")
+        self.assertEqual(f(s, 3) , "…郷")
 
-        rendered = "".join(call.args[0] for call in write.call_args_list)
-        self.assertIn("100%", rendered)
-        self.assertIn("##########", rendered)
+    def test_shorten_eaw_mix(self, f=output.shorten_string_eaw):
+        s = "幻-想-郷##幻-想-郷##幻-想-郷"  # mixed characters
+        self.assertEqual(f(s, 28), s)
+        self.assertEqual(f(s, 25), "幻-想-郷##幻…郷##幻-想-郷")
 
-    @patch("gallery_dl.output.stderr_write_flush")
-    def test_dashboard_shows_small_nonzero_progress(self, write):
-        out = output.TerminalOutput()
+        self.assertEqual(f(s, 20), "幻-想-郷#…##幻-想-郷")
+        self.assertEqual(f(s, 19), "幻-想-郷#…#幻-想-郷")
+        self.assertEqual(f(s, 18), "幻-想-郷…#幻-想-郷")
+        self.assertEqual(f(s, 17), "幻-想-郷…幻-想-郷")
+        self.assertEqual(f(s, 16), "幻-想-…#幻-想-郷")
+        self.assertEqual(f(s, 15), "幻-想-…幻-想-郷")
+        self.assertEqual(f(s, 14), "幻-想-…-想-郷")
+        self.assertEqual(f(s, 13), "幻-想-…-想-郷")
+        self.assertEqual(f(s, 12), "幻-想…-想-郷")
+        self.assertEqual(f(s, 11), "幻-想…想-郷")
+        self.assertEqual(f(s, 10), "幻-…-想-郷")
+        self.assertEqual(f(s, 9) , "幻-…想-郷")
+        self.assertEqual(f(s, 3) , "…郷")
 
-        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
-        out.dashboard_progress(1, 1000, 1, 25)
+    def test_shorten_eaw_separator(self, f=output.shorten_string_eaw):
+        s = "01234567890123456789"  # 20 ascii characters
+        self.assertEqual(f(s, 20, "|---|"), s)
+        self.assertEqual(f(s, 19, "|---|"), "0123456|---|3456789")
+        self.assertEqual(f(s, 15, "|---|"), "01234|---|56789")
+        self.assertEqual(f(s, 10, "|---|"), "01|---|789")
 
-        rendered = "".join(call.args[0] for call in write.call_args_list)
-        self.assertIn("  0%", rendered)
-        self.assertIn("#---------", rendered)
+        self.assertEqual(f(s, 19, "..."), "01234567...23456789")
+        self.assertEqual(f(s, 19, "..") , "01234567..123456789")
+        self.assertEqual(f(s, 19, ".")  , "012345678.123456789")
+        self.assertEqual(f(s, 19, "")   , "0123456780123456789")
 
-    @patch("gallery_dl.output.stderr_write_flush")
-    def test_dashboard_shows_unknown_size_explicitly(self, write):
-        out = output.TerminalOutput()
+    def test_shorten_eaw_separator_wide(self, f=output.shorten_string_eaw):
+        s = "幻想郷幻想郷幻想郷幻想郷"  # 12 wide characters
+        self.assertEqual(f(s, 24, "|---|"), s)
+        self.assertEqual(f(s, 19, "|---|"), "幻想郷|---|郷幻想郷")
+        self.assertEqual(f(s, 15, "|---|"), "幻想|---|幻想郷")
+        self.assertEqual(f(s, 10, "|---|"), "幻|---|郷")
 
-        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
+        self.assertEqual(f(s, 19, "..."), "幻想郷幻...郷幻想郷")
+        self.assertEqual(f(s, 19, "..") , "幻想郷幻..郷幻想郷")
+        self.assertEqual(f(s, 19, ".")  , "幻想郷幻.想郷幻想郷")
+        self.assertEqual(f(s, 19, "")   , "幻想郷幻想郷幻想郷")
 
-        rendered = "".join(call.args[0] for call in write.call_args_list)
-        self.assertIn(" n/a", rendered)
-        self.assertIn("unknown...", rendered)
+    def test_shorten_eaw_separator_mix_(self, f=output.shorten_string_eaw):
+        s = "幻-想-郷##幻-想-郷##幻-想-郷"  # mixed characters
+        self.assertEqual(f(s, 30, "|---|"), s)
+        self.assertEqual(f(s, 19, "|---|"), "幻-想-|---|幻-想-郷")
+        self.assertEqual(f(s, 15, "|---|"), "幻-想|---|想-郷")
+        self.assertEqual(f(s, 10, "|---|"), "幻|---|-郷")
 
-    @patch("gallery_dl.output.stderr_write_flush")
-    def test_dashboard_removes_skipped_tasks_from_main_list(self, write):
-        out = output.TerminalOutput()
-
-        out.dashboard_start(1, "https://example.org/file.jpg", "file.jpg")
-        out.dashboard_progress(1, 100, 20, 25)
-        out.dashboard_skip(1, "file.jpg")
-
-        final_render = write.call_args_list[-1].args[0]
-        self.assertIn("RUN:0  DONE:0  SKIP:1  ERR:0", final_render)
-        self.assertNotIn("[SKIP]", final_render)
-        self.assertNotIn("B/s file.jpg", final_render)
+        self.assertEqual(f(s, 19, "..."), "幻-想-郷...幻-想-郷")
+        self.assertEqual(f(s, 19, "..") , "幻-想-郷..#幻-想-郷")
+        self.assertEqual(f(s, 19, ".")  , "幻-想-郷#.#幻-想-郷")
+        self.assertEqual(f(s, 19, "")   , "幻-想-郷###幻-想-郷")
 
 
 if __name__ == "__main__":

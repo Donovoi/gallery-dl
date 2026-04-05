@@ -15,9 +15,6 @@ clean:
 install: man completion
 	$(PYTHON) -m pip install gallery_dl
 
-install-deps:
-	$(PYTHON) -m pip install ".[extra,video]"
-
 release: man completion supportedsites
 	scripts/release.sh
 
@@ -25,7 +22,7 @@ test:
 	scripts/run_tests.py
 
 executable:
-	$(PYTHON) scripts/pyinstaller.py
+	scripts/pyinstaller.py
 
 completion: data/completion/gallery-dl data/completion/_gallery-dl data/completion/gallery-dl.fish
 
@@ -35,7 +32,7 @@ supportedsites: docs/supportedsites.md
 
 options: docs/options.md
 
-.PHONY: all clean install install-deps release test executable completion man supportedsites options
+.PHONY: all clean install release test executable completion man supportedsites options
 
 docs/supportedsites.md: gallery_dl/*/*.py scripts/supportedsites.py
 	$(PYTHON) scripts/supportedsites.py

@@ -10,7 +10,6 @@ import os
 import sys
 import shutil
 import logging
-import threading
 import unicodedata
 from . import config, util, formatter
 
@@ -415,25 +414,6 @@ class NullOutput():
     def progress(self, bytes_total, bytes_downloaded, bytes_per_second):
         """Display download progress"""
 
-    def dashboard_enqueue(self, task_id, url, path=None):
-        """Register a queued dashboard task"""
-
-    def dashboard_start(self, task_id, url, path):
-        """Register a running dashboard task"""
-
-    def dashboard_progress(self, task_id, bytes_total,
-                           bytes_downloaded, bytes_per_second):
-        """Update dashboard progress"""
-
-    def dashboard_issue(self, task_id, message, fatal=False):
-        """Register a dashboard issue"""
-
-    def dashboard_skip(self, task_id, path=None):
-        """Register a skipped dashboard task"""
-
-    def dashboard_success(self, task_id, path=None):
-        """Register a completed dashboard task"""
-
 
 class PipeOutput(NullOutput):
 
@@ -445,14 +425,6 @@ class PipeOutput(NullOutput):
 
 
 class TerminalOutput():
-    _DASHBOARD_LABELS = {
-        "queued" : "QUE",
-        "running": "RUN",
-        "retry"  : "TRY",
-        "done"   : "DONE",
-        "skip"   : "SKIP",
-        "error"  : "ERR",
-    }
 
     def __init__(self):
         if shorten := config.get(("output",), "shorten", True):
@@ -462,9 +434,6 @@ class TerminalOutput():
             self.shorten = lambda txt: func(txt, limit, sep)
         else:
             self.shorten = util.identity
-        self._dashboard_lock = threading.Lock()
-        self._dashboard_tasks = {}
-        self._dashboard_issues = []
 
     def start(self, path):
         stdout_write_flush(self.shorten(f"  {path}"))
@@ -484,182 +453,8 @@ class TerminalOutput():
             stderr_write(f"\r{bytes_downloaded * 100 // bytes_total:>3}% "
                          f"{bdl:>7}B {bps:>7}B/s ")
 
-    def dashboard_enqueue(self, task_id, url, path=None):
-        with self._dashboard_lock:
-            task = self._dashboard_tasks.setdefault(task_id, {
-                "path": path or "",
-                "url": url,
-                "status": "queued",
-                "bytes_total": None,
-                "bytes_downloaded": 0,
-                "bytes_per_second": 0,
-                "issue": "",
-            })
-            task["url"] = url
-            if path:
-                task["path"] = path
-            task["status"] = "queued"
-            self._dashboard_render()
-
-    def dashboard_start(self, task_id, url, path):
-        with self._dashboard_lock:
-            task = self._dashboard_tasks.setdefault(task_id, {
-                "path": "",
-                "url": url,
-                "status": "queued",
-                "bytes_total": None,
-                "bytes_downloaded": 0,
-                "bytes_per_second": 0,
-                "issue": "",
-            })
-            task["url"] = url
-            task["path"] = path
-            task["status"] = "running"
-            self._dashboard_render()
-
-    def dashboard_progress(self, task_id, bytes_total,
-                           bytes_downloaded, bytes_per_second):
-        with self._dashboard_lock:
-            if task := self._dashboard_tasks.get(task_id):
-                task["bytes_total"] = bytes_total
-                task["bytes_downloaded"] = bytes_downloaded
-                task["bytes_per_second"] = bytes_per_second
-                if task["status"] == "queued":
-                    task["status"] = "running"
-                self._dashboard_render()
-
-    def dashboard_issue(self, task_id, message, fatal=False):
-        with self._dashboard_lock:
-            if task := self._dashboard_tasks.get(task_id):
-                task["issue"] = message
-                task["status"] = "error" if fatal else "retry"
-                label = task["path"] or task["url"]
-            else:
-                label = str(task_id)
-            self._dashboard_issues.append((label, message))
-            self._dashboard_issues = self._dashboard_issues[-10:]
-            self._dashboard_render()
-
-    def dashboard_skip(self, task_id, path=None):
-        with self._dashboard_lock:
-            if task := self._dashboard_tasks.get(task_id):
-                if path:
-                    task["path"] = path
-                task["status"] = "skip"
-                self._dashboard_render()
-
-    def dashboard_success(self, task_id, path=None):
-        with self._dashboard_lock:
-            if task := self._dashboard_tasks.get(task_id):
-                if path:
-                    task["path"] = path
-                task["status"] = "done"
-                self._dashboard_render()
-
-    def _dashboard_summary(self, status, count):
-        return f"{self._dashboard_label(status)}:{count}"
-
-    def _dashboard_label(self, status):
-        return self._DASHBOARD_LABELS.get(status, status[:3].upper())
-
-    def _dashboard_downloaded(self, total, downloaded):
-        return min(downloaded, total) if total else downloaded
-
-    def _dashboard_filled(self, total, downloaded, width):
-        if not total or not downloaded:
-            return 0
-        return min(width, max(1, downloaded * width // total))
-
-    def _dashboard_unknown(self, width):
-        return ("unknown" + "." * width)[:width]
-
-    def _dashboard_bar(self, status, total, downloaded, width=10):
-        if not total:
-            return self._dashboard_unknown(width)
-        downloaded = self._dashboard_downloaded(total, downloaded)
-        filled = self._dashboard_filled(total, downloaded, width)
-        return "#" * filled + "-" * (width - filled)
-
-    def _dashboard_title(self, text):
-        return text
-
-    def _dashboard_percent(self, total, downloaded):
-        if not total:
-            return " n/a"
-        downloaded = self._dashboard_downloaded(total, downloaded)
-        return f"{downloaded * 100 // total:>3}%"
-
-    def _dashboard_show_url(self, task, status):
-        return (
-            task["path"] and task["path"] != task["url"] and
-            (status in ("queued", "retry", "error") or task["issue"])
-        )
-
-    def _dashboard_show_task(self, status):
-        return status in ("queued", "running", "retry", "error")
-
-    def _dashboard_render(self):
-        active = done = failed = skipped = 0
-        lines = [
-            self._dashboard_title("gallery-dl aria2c dashboard"),
-        ]
-
-        for task in self._dashboard_tasks.values():
-            status = task["status"]
-            if status in ("queued", "running", "retry"):
-                active += 1
-            elif status == "done":
-                done += 1
-            elif status == "skip":
-                skipped += 1
-            elif status == "error":
-                failed += 1
-
-        lines.append(
-            "  ".join((
-                self._dashboard_summary("running", active),
-                self._dashboard_summary("done", done),
-                self._dashboard_summary("skip", skipped),
-                self._dashboard_summary("error", failed),
-            )))
-        lines.append("")
-
-        for task in self._dashboard_tasks.values():
-            status = task["status"]
-            if not self._dashboard_show_task(status):
-                continue
-            total = task["bytes_total"]
-            downloaded = task["bytes_downloaded"]
-            speed = util.format_value(task["bytes_per_second"])
-            percent = self._dashboard_percent(total, downloaded)
-            label = self._dashboard_label(status)
-            bar = self._dashboard_bar(status, total, downloaded)
-            target = task["path"] or task["url"]
-            lines.append(
-                self.shorten(
-                    f"[{label}] {percent} {bar} {speed:>7}B/s {target}"))
-            if self._dashboard_show_url(task, status):
-                lines.append(self.shorten(f"      {task['url']}"))
-            if task["issue"]:
-                lines.append(self.shorten(f"      issue: {task['issue']}"))
-
-        if self._dashboard_issues:
-            lines.extend(("", "issues:"))
-            for label, message in self._dashboard_issues[-5:]:
-                lines.append(self.shorten(f"  - {label}: {message}"))
-
-        stderr_write_flush("\x1b[2J\x1b[H" + "\n".join(lines) + "\x1b[J")
-
 
 class ColorOutput(TerminalOutput):
-    _DASHBOARD_SYMBOLS = {
-        "queued" : "…",
-        "running": "▶",
-        "retry"  : "↻",
-        "done"   : "✓",
-        "skip"   : "↷",
-        "error"  : "✕",
-    }
 
     def __init__(self):
         TerminalOutput.__init__(self)
@@ -670,16 +465,6 @@ class ColorOutput(TerminalOutput):
 
         self.color_skip = f"\x1b[{colors.get('skip', '2')}m"
         self.color_success = f"\r\x1b[{colors.get('success', '1;32')}m"
-        self._dashboard_colors = {
-            "title"  : colors.get("info", "1;37"),
-            "queued" : colors.get("queued", "0;36"),
-            "running": colors.get("running", "1;34"),
-            "retry"  : colors.get("warning", "1;33"),
-            "done"   : colors.get("success", "1;32"),
-            "skip"   : colors.get("skip", "2"),
-            "error"  : colors.get("error", "1;31"),
-            "muted"  : colors.get("debug", "0;37"),
-        }
 
     def start(self, path):
         stdout_write_flush(self.shorten(path))
@@ -689,38 +474,6 @@ class ColorOutput(TerminalOutput):
 
     def success(self, path):
         stdout_write(f"{self.color_success}{self.shorten(path)}\x1b[0m\n")
-
-    def _dashboard_color(self, key, text):
-        color = self._dashboard_colors.get(key)
-        return f"\x1b[{color}m{text}\x1b[0m" if color else text
-
-    def _dashboard_summary(self, status, count):
-        symbol = self._DASHBOARD_SYMBOLS.get(
-            status, self._dashboard_label(status))
-        return self._dashboard_color(status, f"{symbol} {count}")
-
-    def _dashboard_label(self, status):
-        return self._dashboard_color(
-            status,
-            self._DASHBOARD_SYMBOLS.get(
-                status,
-                self._DASHBOARD_LABELS.get(status, status[:3].upper()),
-            ),
-        )
-
-    def _dashboard_bar(self, status, total, downloaded, width=10):
-        if not total:
-            return self._dashboard_color(
-                "muted", self._dashboard_unknown(width))
-        downloaded = self._dashboard_downloaded(total, downloaded)
-        filled = self._dashboard_filled(total, downloaded, width)
-        return (
-            self._dashboard_color(status, "█" * filled) +
-            self._dashboard_color("muted", "░" * (width - filled))
-        )
-
-    def _dashboard_title(self, text):
-        return self._dashboard_color("title", text)
 
 
 class CustomOutput():
@@ -781,13 +534,6 @@ class CustomOutput():
             stderr_write(self._fmt_progress_total(
                 bdl, bps, util.format_value(bytes_total),
                 bytes_downloaded * 100 // bytes_total))
-
-    dashboard_enqueue = NullOutput.dashboard_enqueue
-    dashboard_start = NullOutput.dashboard_start
-    dashboard_progress = NullOutput.dashboard_progress
-    dashboard_issue = NullOutput.dashboard_issue
-    dashboard_skip = NullOutput.dashboard_skip
-    dashboard_success = NullOutput.dashboard_success
 
 
 class EAWCache(dict):
