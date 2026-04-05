@@ -39,17 +39,19 @@ class TestReadmeExecutables(unittest.TestCase):
         )
 
     def test_nightly_builds_use_python_dash_c_for_uv_mobile_install(self):
-        self.assertIn(
-            'WHEEL="$(uv run python -c ',
+        self.assertRegex(
             self.readme,
+            (
+                r"(?s)WHEEL=\"\$\(uv run python -c\s+.*?"
+                r"with urlopen\((['\"])https://api\.github\.com/repos/"
+                r"Donovoi/gallery-dl/releases\1\)\s+as response.*?"
+                r"endswith\((['\"])-py3-none-any\.whl\2\)"
+            ),
         )
-        self.assertIn(
-            ('with urlopen("https://api.github.com/repos/'
-             'Donovoi/gallery-dl/releases") as response'),
+        self.assertNotRegex(
             self.readme,
+            r"uv run python\s*-\s*<<\s*(['\"]?)PY\1",
         )
-        self.assertIn('endswith("-py3-none-any.whl")', self.readme)
-        self.assertNotIn("uv run python - <<'PY'", self.readme)
 
 
 if __name__ == "__main__":
