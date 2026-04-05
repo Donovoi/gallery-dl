@@ -38,7 +38,7 @@ class TestReadmeExecutables(unittest.TestCase):
              r"&& python3 -m gallery_dl URL"),
         )
 
-    def test_nightly_builds_use_fixed_python_dash_c_for_uv_mobile_install(self):
+    def test_nightly_builds_use_valid_python_dash_c_for_uv_mobile_install(self):
         self.assertRegex(
             self.readme,
             (
