@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   repository_dispatch:
     types:
-    - upstream_master_push
+      - upstream_master_push
   schedule:
     - cron: "17 * * * *"
 

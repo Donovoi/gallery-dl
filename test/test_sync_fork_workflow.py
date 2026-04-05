@@ -27,7 +27,7 @@ class TestSyncForkWorkflow(unittest.TestCase):
         self.assertIn("  workflow_dispatch:", self.lines)
         self.assertIn("  repository_dispatch:", self.lines)
         self.assertIn("    types:", self.lines)
-        self.assertIn("    - upstream_master_push", self.lines)
+        self.assertIn("      - upstream_master_push", self.lines)
         self.assertRegex(
             self.workflow,
             r'(?m)^\s+- cron: (?P<quote>[\'"])17 \* \* \* \*(?P=quote)$',
