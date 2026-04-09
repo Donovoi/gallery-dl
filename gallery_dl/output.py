@@ -61,9 +61,7 @@ else:
     CHAR_ELLIPSIES = "…"
 
 
-DASHBOARD_ACTIVE_STATES = {"queued", "running", "retry"}
-DASHBOARD_ISSUE_LIMIT = 10
-DASHBOARD_COMPLETED_TASK_LIMIT = 20
+DASHBOARD_BAR_WIDTH = 16
 
 
 # --------------------------------------------------------------------
@@ -461,7 +459,9 @@ class TerminalOutput():
             self.shorten = util.identity
         self._dashboard_lock = threading.Lock()
         self._dashboard_tasks = {}
-        self._dashboard_issues = []
+        self._dashboard_done = 0
+        self._dashboard_skipped = 0
+        self._dashboard_failed = 0
 
     def start(self, path):
         stdout_write_flush(self.shorten(f"  {path}"))
@@ -489,7 +489,6 @@ class TerminalOutput():
                 "status": "queued",
                 "bytes_total": None,
                 "bytes_downloaded": 0,
-                "bytes_per_second": 0,
                 "issue": "",
             })
             task["url"] = url
@@ -506,7 +505,6 @@ class TerminalOutput():
                 "status": "queued",
                 "bytes_total": None,
                 "bytes_downloaded": 0,
-                "bytes_per_second": 0,
                 "issue": "",
             })
             task["url"] = url
@@ -516,11 +514,11 @@ class TerminalOutput():
 
     def dashboard_progress(self, task_id, bytes_total,
                            bytes_downloaded, bytes_per_second):
+        del bytes_per_second
         with self._dashboard_lock:
             if task := self._dashboard_tasks.get(task_id):
                 task["bytes_total"] = bytes_total
                 task["bytes_downloaded"] = bytes_downloaded
-                task["bytes_per_second"] = bytes_per_second
                 if task["status"] == "queued":
                     task["status"] = "running"
                 self._dashboard_render()
@@ -530,14 +528,11 @@ class TerminalOutput():
             if task := self._dashboard_tasks.get(task_id):
                 task["issue"] = message
                 task["status"] = "error" if fatal else "retry"
-                label = task["path"] or task["url"]
-            else:
-                label = str(task_id)
-            self._dashboard_issues.append((label, message))
-            self._dashboard_issues = self._dashboard_issues[
-                -DASHBOARD_ISSUE_LIMIT:]
-            if fatal:
-                self._dashboard_prune()
+                if fatal:
+                    del self._dashboard_tasks[task_id]
+                    self._dashboard_failed += 1
+            elif fatal:
+                self._dashboard_failed += 1
             self._dashboard_render()
 
     def dashboard_skip(self, task_id, path=None):
@@ -545,8 +540,8 @@ class TerminalOutput():
             if task := self._dashboard_tasks.get(task_id):
                 if path:
                     task["path"] = path
-                task["status"] = "skip"
-                self._dashboard_prune()
+                del self._dashboard_tasks[task_id]
+                self._dashboard_skipped += 1
                 self._dashboard_render()
 
     def dashboard_success(self, task_id, path=None):
@@ -554,73 +549,89 @@ class TerminalOutput():
             if task := self._dashboard_tasks.get(task_id):
                 if path:
                     task["path"] = path
-                task["status"] = "done"
-                self._dashboard_prune()
+                del self._dashboard_tasks[task_id]
+                self._dashboard_done += 1
                 self._dashboard_render()
 
-    def _dashboard_prune(self):
-        completed_ids = [
-            task_id
-            for task_id, task in self._dashboard_tasks.items()
-            if task["status"] not in DASHBOARD_ACTIVE_STATES
-        ]
-        if len(completed_ids) > DASHBOARD_COMPLETED_TASK_LIMIT:
-            for task_id in completed_ids[:-DASHBOARD_COMPLETED_TASK_LIMIT]:
-                del self._dashboard_tasks[task_id]
+    def _dashboard_style(self, text, style):
+        return text
+
+    def _dashboard_summary_line(self, active, done, skipped, failed):
+        return "".join((
+            self._dashboard_style("active", "summary-active"),
+            f": {active}  ",
+            self._dashboard_style("done", "summary-done"),
+            f": {done}  ",
+            self._dashboard_style("skipped", "summary-skipped"),
+            f": {skipped}  ",
+            self._dashboard_style("failed", "summary-failed"),
+            f": {failed}",
+        ))
+
+    def _dashboard_percent(self, task):
+        total = task["bytes_total"]
+        downloaded = task["bytes_downloaded"]
+        return f"{downloaded * 100 // total:>3}%" if total else " --%"
+
+    def _dashboard_bar(self, task):
+        total = task["bytes_total"]
+        if not total:
+            return "[" + ("░" * DASHBOARD_BAR_WIDTH) + "]"
+        filled = min(
+            DASHBOARD_BAR_WIDTH,
+            task["bytes_downloaded"] * DASHBOARD_BAR_WIDTH // total,
+        )
+        return "".join((
+            "[",
+            "█" * filled,
+            "░" * (DASHBOARD_BAR_WIDTH - filled),
+            "]",
+        ))
+
+    def _dashboard_target(self, task):
+        target = task["path"] or task["url"]
+        if task["status"] == "queued":
+            return f"{target} (queued)"
+        if task["status"] == "retry":
+            issue = task["issue"]
+            return (f"{target} (retrying: {issue})"
+                    if issue else f"{target} (retrying)")
+        return target
+
+    def _dashboard_task_line(self, task):
+        return self.shorten(
+            f"{self._dashboard_percent(task)} "
+            f"{self._dashboard_bar(task)} "
+            f"{self._dashboard_target(task)}"
+        )
+
+    def _dashboard_url_line(self, task):
+        if not task["path"] or task["path"] == task["url"]:
+            return None
+        return self._dashboard_style(
+            self.shorten(f"      {task['url']}"),
+            "url",
+        )
 
     def _dashboard_render(self):
-        active = done = failed = skipped = 0
-        lines = [
-            "gallery-dl aria2c dashboard",
-            "",
-        ]
+        active = len(self._dashboard_tasks)
+        lines = [self._dashboard_summary_line(
+            active,
+            self._dashboard_done,
+            self._dashboard_skipped,
+            self._dashboard_failed,
+        )]
 
-        for task in self._dashboard_tasks.values():
-            status = task["status"]
-            if status in DASHBOARD_ACTIVE_STATES:
-                active += 1
-            elif status == "done":
-                done += 1
-            elif status == "skip":
-                skipped += 1
-            elif status == "error":
-                failed += 1
-
-        lines.append(
-            f"active: {active}  done: {done}  "
-            f"skipped: {skipped}  failed: {failed}"
-        )
-        lines.append("")
-
-        for task in self._dashboard_tasks.values():
-            status = task["status"]
-            total = task["bytes_total"]
-            downloaded = task["bytes_downloaded"]
-            speed = util.format_value(task["bytes_per_second"])
-            if total:
-                percent = f"{downloaded * 100 // total:>3}%"
-            else:
-                percent = " --%"
-            label = {
-                "queued": "QUE",
-                "running": "RUN",
-                "retry" : "TRY",
-                "done"  : "DONE",
-                "skip"  : "SKIP",
-                "error" : "ERR",
-            }[status]
-            target = task["path"] or task["url"]
-            lines.append(
-                self.shorten(
-                    f"[{label}] {percent} {speed:>7}B/s {target}"))
-            lines.append(self.shorten(f"      {task['url']}"))
-            if task["issue"]:
-                lines.append(self.shorten(f"      issue: {task['issue']}"))
-
-        if self._dashboard_issues:
-            lines.extend(("", "issues:"))
-            for label, message in self._dashboard_issues[-5:]:
-                lines.append(self.shorten(f"  - {label}: {message}"))
+        if active:
+            lines.append("")
+            for task in self._dashboard_tasks.values():
+                lines.append(self._dashboard_style(
+                    self._dashboard_task_line(task),
+                    f"task-{task['status']}",
+                ))
+                url_line = self._dashboard_url_line(task)
+                if url_line:
+                    lines.append(url_line)
 
         rendered = "\n".join(lines)
         if ANSI and TTY_STDERR:
@@ -640,6 +651,16 @@ class ColorOutput(TerminalOutput):
 
         self.color_skip = f"\x1b[{colors.get('skip', '2')}m"
         self.color_success = f"\r\x1b[{colors.get('success', '1;32')}m"
+        self._dashboard_colors = {
+            "summary-active": f"\x1b[{colors.get('info', '1;37')}m",
+            "summary-done": f"\x1b[{colors.get('success', '1;32')}m",
+            "summary-skipped": f"\x1b[{colors.get('skip', '2')}m",
+            "summary-failed": f"\x1b[{colors.get('error', '1;31')}m",
+            "task-queued": f"\x1b[{colors.get('info', '1;37')}m",
+            "task-running": f"\x1b[{colors.get('info', '1;37')}m",
+            "task-retry": f"\x1b[{colors.get('warning', '1;33')}m",
+            "url": "\x1b[2m",
+        }
 
     def start(self, path):
         stdout_write_flush(self.shorten(path))
@@ -649,6 +670,10 @@ class ColorOutput(TerminalOutput):
 
     def success(self, path):
         stdout_write(f"{self.color_success}{self.shorten(path)}\x1b[0m\n")
+
+    def _dashboard_style(self, text, style):
+        color = self._dashboard_colors.get(style)
+        return f"{color}{text}\x1b[0m" if color else text
 
 
 class CustomOutput():
