@@ -463,10 +463,10 @@ class HttpDownloader(DownloaderBase):
         validate_sig = kwdict.get("_http_signature")
         validate_ext = (adjust_extension and
                         pathfmt.extension in SIGNATURE_CHECKS)
-        validate_html = (self.validate_html and
-                         pathfmt.extension not in ("html", "htm"))
+        reject_html = (self.validate_html and
+                       pathfmt.extension not in ("html", "htm"))
 
-        if validate_ext or validate_sig or validate_html:
+        if validate_ext or validate_sig or reject_html:
             try:
                 with open(outpath, "rb") as fp:
                     file_header = fp.read(16)
@@ -474,7 +474,7 @@ class HttpDownloader(DownloaderBase):
                 self.log.warning(exc)
                 return False
 
-            if validate_html and _signature_html(file_header):
+            if reject_html and _signature_html(file_header):
                 self.log.warning("HTML response")
                 self._remove_aria2c_file(pathfmt, outpath)
                 return False

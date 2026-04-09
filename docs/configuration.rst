@@ -8023,7 +8023,7 @@ Description
     Maximum number of eligible ``aria2c``-backed HTTP downloads to keep in
     flight at the same time for a gallery.
 
-    This only applies when `aria2c <downloader.http.aria2c_>`__ is enabled.
+    This only applies when ``downloader.http.aria2c`` is enabled.
     Downloads that must fall back to the built-in HTTP downloader remain
     synchronous.
 
