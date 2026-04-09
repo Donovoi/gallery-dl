@@ -41,10 +41,11 @@ class TestDashboardOutput(unittest.TestCase):
             retry_render,
         )
         self.assertIn(
-            " 50% [████████░░░░░░░░] file.jpg (retrying)",
+            " 50% [████████░░░░░░░░] file.jpg (retrying: network hiccup)",
             retry_render,
         )
         self.assertIn("https://example.org/file.jpg", retry_render)
+        self.assertIn("network hiccup", retry_render)
 
         self.assertIn(
             "active: 0  done: 1  skipped: 0  failed: 0",

@@ -529,6 +529,7 @@ class TerminalOutput():
     def dashboard_issue(self, task_id, message, fatal=False):
         with self._dashboard_lock:
             if task := self._dashboard_tasks.get(task_id):
+                task["issue"] = message
                 task["status"] = "error" if fatal else "retry"
             if fatal:
                 self._dashboard_tasks.pop(task_id, None)
@@ -593,7 +594,9 @@ class TerminalOutput():
         if task["status"] == "queued":
             return f"{target} (queued)"
         if task["status"] == "retry":
-            return f"{target} (retrying)"
+            issue = task["issue"]
+            return (f"{target} (retrying: {issue})"
+                    if issue else f"{target} (retrying)")
         return target
 
     def _dashboard_task_line(self, task):
