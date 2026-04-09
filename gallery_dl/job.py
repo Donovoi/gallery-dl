@@ -11,6 +11,8 @@ import errno
 import logging
 import functools
 import collections
+import concurrent.futures
+import threading
 
 from . import (
     extractor,
@@ -30,6 +32,14 @@ from . import (
 from .extractor.message import Message
 stdout_write = output.stdout_write
 FLAGS = util.FLAGS
+ARIA2C_ASYNC_UNSAFE_HOOKS = {
+    "after",
+    "error",
+    "file",
+    "prepare",
+    "prepare-after",
+    "skip",
+}
 
 
 class Job():
@@ -415,11 +425,27 @@ class DownloadJob(Job):
         self.visited = set() if parent is None else parent.visited
         self._extractor_filter = None
         self._skipcnt = 0
+        self._archive_lock = threading.Lock()
+        self._status_lock = threading.Lock()
+        self._skip_lock = threading.Lock()
+        self._async_futures = []
+        self._async_executor = None
+        self._directory_kwdict = None
 
     def handle_url(self, url, kwdict):
+        downloader_instance = self._aria2c_async_downloader(url, kwdict)
+        if downloader_instance:
+            self._submit_async_download(url, kwdict, downloader_instance)
+            return
+
+        self._wait_pending_downloads()
+        self._handle_url_impl(url, kwdict)
+
+    def _handle_url_impl(self, url, kwdict, pathfmt=None,
+                         task_id=None, downloader_instance=None):
         """Download the resource specified in 'url'"""
         hooks = self.hooks
-        pathfmt = self.pathfmt
+        pathfmt = self.pathfmt if pathfmt is None else pathfmt
         archive = self.archive
 
         # prepare download
@@ -429,9 +455,9 @@ class DownloadJob(Job):
             for callback in hooks["prepare"]:
                 callback(pathfmt)
 
-        if archive is not None and archive.check(kwdict):
+        if archive is not None and self._archive_check(archive, kwdict):
             pathfmt.fix_extension()
-            self.handle_skip()
+            self.handle_skip(pathfmt, task_id)
             return
 
         if pathfmt.extension and not self.metadata_http:
@@ -439,8 +465,8 @@ class DownloadJob(Job):
 
             if pathfmt.exists():
                 if archive is not None and self._archive_write_skip:
-                    archive.add(kwdict)
-                self.handle_skip()
+                    self._archive_add(archive, kwdict)
+                self.handle_skip(pathfmt, task_id)
                 return
 
         if "prepare-after" in hooks:
@@ -449,8 +475,8 @@ class DownloadJob(Job):
 
             if kwdict.pop("_file_recheck", False) and pathfmt.exists():
                 if archive is not None and self._archive_write_skip:
-                    archive.add(kwdict)
-                self.handle_skip()
+                    self._archive_add(archive, kwdict)
+                self.handle_skip(pathfmt, task_id)
                 return
 
         if self.sleep is not None:
@@ -459,13 +485,15 @@ class DownloadJob(Job):
         # download from URL
         failed = False
         try:
-            if not self.download(url):
+            if not self.download(url, pathfmt, downloader_instance):
                 # use fallback URLs if available/enabled
                 fallback = kwdict.get("_fallback", ()) if self.fallback else ()
                 for num, url in enumerate(fallback, 1):
                     util.remove_file(pathfmt.temppath)
                     self.log.info("Trying fallback URL #%d", num)
-                    if self.download(url):
+                    if task_id is not None:
+                        self.out.dashboard_enqueue(task_id, url, pathfmt.path)
+                    if self.download(url, pathfmt, downloader_instance):
                         break
                 else:
                     failed = True
@@ -473,7 +501,12 @@ class DownloadJob(Job):
             failed = True
 
         if failed:
-            self.status |= 4
+            with self._status_lock:
+                self.status |= 4
+            if task_id is not None:
+                self.out.dashboard_issue(
+                    task_id, f"failed to download {pathfmt.filename or url}",
+                    True)
             self.log.error("Failed to download %s", pathfmt.filename or url)
             if "error" in hooks:
                 for callback in hooks["error"]:
@@ -482,8 +515,8 @@ class DownloadJob(Job):
 
         if not pathfmt.temppath:
             if archive is not None and self._archive_write_skip:
-                archive.add(kwdict)
-            self.handle_skip()
+                self._archive_add(archive, kwdict)
+            self.handle_skip(pathfmt, task_id)
             return
 
         # run postprocessors
@@ -494,7 +527,12 @@ class DownloadJob(Job):
         # process download flag
         if FLAGS.DOWNLOAD is not None:
             FLAGS.DOWNLOAD = None
-            self.status |= 4
+            with self._status_lock:
+                self.status |= 4
+            if task_id is not None:
+                self.out.dashboard_issue(
+                    task_id, f"failed to download {pathfmt.filename or url}",
+                    True)
             self.log.error("Failed to download %s", pathfmt.filename or url)
             if "error" in hooks:
                 for callback in hooks["error"]:
@@ -503,32 +541,40 @@ class DownloadJob(Job):
 
         # download succeeded
         pathfmt.finalize()
-        self.out.success(pathfmt.path)
+        if task_id is None:
+            self.out.success(pathfmt.path)
+        else:
+            self.out.dashboard_success(task_id, pathfmt.path)
         self._skipcnt = 0
         if archive is not None and self._archive_write_file:
-            archive.add(kwdict)
+            self._archive_add(archive, kwdict)
         if "after" in hooks:
             for callback in hooks["after"]:
                 callback(pathfmt)
         if archive is not None and self._archive_write_after:
-            archive.add(kwdict)
+            self._archive_add(archive, kwdict)
 
     def handle_directory(self, kwdict):
         """Set and create the target directory for downloads"""
+        keep_pending = self._can_keep_pending_downloads(kwdict)
+        if not keep_pending:
+            self._wait_pending_downloads()
         if self.pathfmt is None:
             self.initialize(kwdict)
         else:
-            if "post-after" in self.hooks:
+            if not keep_pending and "post-after" in self.hooks:
                 for callback in self.hooks["post-after"]:
                     callback(self.pathfmt)
-            if FLAGS.POST is not None:
+            if not keep_pending and FLAGS.POST is not None:
                 FLAGS.process("POST")
             self.pathfmt.set_directory(kwdict)
         if "post" in self.hooks:
             for callback in self.hooks["post"]:
                 callback(self.pathfmt)
+        self._directory_kwdict = self.pathfmt.kwdict.copy()
 
     def handle_queue(self, url, kwdict):
+        self._wait_pending_downloads()
         if url in self.visited:
             return
         self.visited.add(url)
@@ -619,6 +665,7 @@ class DownloadJob(Job):
                 callback(pathfmt)
 
     def handle_finalize(self):
+        self._wait_pending_downloads()
         if self.archive is not None:
             if not self.status:
                 self.archive.finalize()
@@ -643,28 +690,39 @@ class DownloadJob(Job):
             if "finalize" in hooks:
                 for callback in hooks["finalize"]:
                     callback(pathfmt)
+        if self._async_executor is not None:
+            self._async_executor.shutdown()
+            self._async_executor = None
 
-    def handle_skip(self):
-        pathfmt = self.pathfmt
+    def handle_skip(self, pathfmt=None, task_id=None):
+        pathfmt = self.pathfmt if pathfmt is None else pathfmt
         if "skip" in self.hooks:
             for callback in self.hooks["skip"]:
                 callback(pathfmt)
-        self.out.skip(pathfmt.path)
+        if task_id is None:
+            self.out.skip(pathfmt.path)
+        else:
+            self.out.dashboard_skip(task_id, pathfmt.path)
 
-        if self._skipexc is not None:
-            if self._skipftr is None or self._skipftr(pathfmt.kwdict):
-                self._skipcnt += 1
-                if self._skipcnt >= self._skipmax:
-                    raise self._skipexc
+        with self._skip_lock:
+            if self._skipexc is not None:
+                if self._skipftr is None or self._skipftr(pathfmt.kwdict):
+                    self._skipcnt += 1
+                    if self._skipcnt >= self._skipmax:
+                        raise self._skipexc
 
         if self.sleep_skip is not None:
             self.extractor.sleep(self.sleep_skip(), "skip")
 
-    def download(self, url):
+    def download(self, url, pathfmt=None, downloader_instance=None):
         """Download 'url'"""
-        if downloader := self.get_downloader(url[:url.find(":")]):
+        downloader = (
+            downloader_instance or self.get_downloader(url[:url.find(":")])
+        )
+        if downloader:
             try:
-                return downloader.download(url, self.pathfmt)
+                return downloader.download(
+                    url, self.pathfmt if pathfmt is None else pathfmt)
             except OSError as exc:
                 if exc.errno == errno.ENOSPC:
                     raise
@@ -680,18 +738,83 @@ class DownloadJob(Job):
         except KeyError:
             pass
 
-        cls = downloader.find(scheme)
-        if cls and config.get(("downloader", cls.scheme), "enabled", True):
-            instance = cls(self)
-        else:
-            instance = None
-            self.log.error("'%s:' URLs are not supported/enabled", scheme)
+        instance = self._create_downloader(scheme)
+        cls = instance.__class__ if instance is not None else None
 
         if cls and cls.scheme == "http":
             self.downloaders["http"] = self.downloaders["https"] = instance
         else:
             self.downloaders[scheme] = instance
         return instance
+
+    def _create_downloader(self, scheme):
+        cls = downloader.find(scheme)
+        if cls and config.get(("downloader", cls.scheme), "enabled", True):
+            return cls(self)
+        self.log.error("'%s:' URLs are not supported/enabled", scheme)
+        return None
+
+    def _archive_check(self, archive, kwdict):
+        with self._archive_lock:
+            return archive.check(kwdict)
+
+    def _archive_add(self, archive, kwdict):
+        with self._archive_lock:
+            archive.add(kwdict)
+
+    def _aria2c_async_downloader(self, url, kwdict):
+        scheme = url[:url.find(":")]
+        if scheme not in ("http", "https") or self._directory_kwdict is None:
+            return None
+        if self.hooks and any(
+                hook in self.hooks for hook in ARIA2C_ASYNC_UNSAFE_HOOKS):
+            return None
+        instance = self._create_downloader(scheme)
+        if (instance is None or
+                not getattr(instance, "_aria2c", None) or
+                not instance._can_use_aria2c(kwdict)):
+            return None
+        return instance
+
+    def _submit_async_download(self, url, kwdict, downloader_instance):
+        if self._async_executor is None:
+            self._async_executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=getattr(
+                    downloader_instance,
+                    "max_concurrent_downloads", 16,
+                ))
+
+        pathfmt = path.PathFormat(self.extractor)
+        pathfmt.set_directory(self._directory_kwdict.copy())
+        task_id = id(pathfmt)
+        kwdict = kwdict.copy()
+        kwdict["_aria2c_task_id"] = task_id
+        self.out.dashboard_enqueue(task_id, url)
+        self._async_futures.append(self._async_executor.submit(
+            self._handle_url_impl,
+            url, kwdict, pathfmt, task_id, downloader_instance,
+        ))
+
+    def _wait_pending_downloads(self):
+        if not self._async_futures:
+            return
+        futures = self._async_futures
+        self._async_futures = []
+        for future in futures:
+            future.result()
+
+    def _can_keep_pending_downloads(self, kwdict):
+        if (not self._async_futures or
+                self.pathfmt is None or
+                "post" in self.hooks or
+                "post-after" in self.hooks or
+                FLAGS.POST is not None):
+            return False
+
+        pathfmt = path.PathFormat(self.extractor)
+        pathfmt.set_directory(kwdict)
+        return (pathfmt.directory == self.pathfmt.directory and
+                pathfmt.realdirectory == self.pathfmt.realdirectory)
 
     def initialize(self, kwdict=None):
         """initialize PathFormat, postprocessors, archive, options, etc"""
