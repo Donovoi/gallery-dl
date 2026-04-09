@@ -531,8 +531,10 @@ class TerminalOutput():
             if task := self._dashboard_tasks.get(task_id):
                 task["issue"] = message
                 task["status"] = "error" if fatal else "retry"
-            if fatal:
-                self._dashboard_tasks.pop(task_id, None)
+                if fatal:
+                    del self._dashboard_tasks[task_id]
+                    self._dashboard_failed += 1
+            elif fatal:
                 self._dashboard_failed += 1
             self._dashboard_render()
 
