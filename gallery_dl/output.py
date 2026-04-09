@@ -581,7 +581,12 @@ class TerminalOutput():
             DASHBOARD_BAR_WIDTH,
             task["bytes_downloaded"] * DASHBOARD_BAR_WIDTH // total,
         )
-        return "[" + ("█" * filled) + ("░" * (DASHBOARD_BAR_WIDTH - filled)) + "]"
+        return "".join((
+            "[",
+            "█" * filled,
+            "░" * (DASHBOARD_BAR_WIDTH - filled),
+            "]",
+        ))
 
     def _dashboard_target(self, task):
         target = task["path"] or task["url"]
