@@ -61,7 +61,6 @@ else:
     CHAR_ELLIPSIES = "…"
 
 
-DASHBOARD_ACTIVE_STATES = {"queued", "running", "retry"}
 DASHBOARD_BAR_WIDTH = 16
 
 
@@ -490,7 +489,6 @@ class TerminalOutput():
                 "status": "queued",
                 "bytes_total": None,
                 "bytes_downloaded": 0,
-                "bytes_per_second": 0,
                 "issue": "",
             })
             task["url"] = url
@@ -507,7 +505,6 @@ class TerminalOutput():
                 "status": "queued",
                 "bytes_total": None,
                 "bytes_downloaded": 0,
-                "bytes_per_second": 0,
                 "issue": "",
             })
             task["url"] = url
@@ -517,11 +514,11 @@ class TerminalOutput():
 
     def dashboard_progress(self, task_id, bytes_total,
                            bytes_downloaded, bytes_per_second):
+        del bytes_per_second
         with self._dashboard_lock:
             if task := self._dashboard_tasks.get(task_id):
                 task["bytes_total"] = bytes_total
                 task["bytes_downloaded"] = bytes_downloaded
-                task["bytes_per_second"] = bytes_per_second
                 if task["status"] == "queued":
                     task["status"] = "running"
                 self._dashboard_render()
