@@ -10,6 +10,7 @@ import os
 import sys
 import shutil
 import logging
+import threading
 import unicodedata
 from . import config, util, formatter
 
@@ -58,6 +59,11 @@ else:
     CHAR_SKIP = "# "
     CHAR_SUCCESS = "✔ "
     CHAR_ELLIPSIES = "…"
+
+
+DASHBOARD_ACTIVE_STATES = {"queued", "running", "retry"}
+DASHBOARD_ISSUE_LIMIT = 10
+DASHBOARD_COMPLETED_TASK_LIMIT = 20
 
 
 # --------------------------------------------------------------------
@@ -414,6 +420,25 @@ class NullOutput():
     def progress(self, bytes_total, bytes_downloaded, bytes_per_second):
         """Display download progress"""
 
+    def dashboard_enqueue(self, task_id, url, path=None):
+        """Register a queued dashboard task"""
+
+    def dashboard_start(self, task_id, url, path):
+        """Register a running dashboard task"""
+
+    def dashboard_progress(self, task_id, bytes_total,
+                           bytes_downloaded, bytes_per_second):
+        """Update dashboard progress"""
+
+    def dashboard_issue(self, task_id, message, fatal=False):
+        """Register a dashboard issue"""
+
+    def dashboard_skip(self, task_id, path=None):
+        """Register a skipped dashboard task"""
+
+    def dashboard_success(self, task_id, path=None):
+        """Register a completed dashboard task"""
+
 
 class PipeOutput(NullOutput):
 
@@ -434,6 +459,9 @@ class TerminalOutput():
             self.shorten = lambda txt: func(txt, limit, sep)
         else:
             self.shorten = util.identity
+        self._dashboard_lock = threading.Lock()
+        self._dashboard_tasks = {}
+        self._dashboard_issues = []
 
     def start(self, path):
         stdout_write_flush(self.shorten(f"  {path}"))
@@ -452,6 +480,153 @@ class TerminalOutput():
         else:
             stderr_write(f"\r{bytes_downloaded * 100 // bytes_total:>3}% "
                          f"{bdl:>7}B {bps:>7}B/s ")
+
+    def dashboard_enqueue(self, task_id, url, path=None):
+        with self._dashboard_lock:
+            task = self._dashboard_tasks.setdefault(task_id, {
+                "path": path or "",
+                "url": url,
+                "status": "queued",
+                "bytes_total": None,
+                "bytes_downloaded": 0,
+                "bytes_per_second": 0,
+                "issue": "",
+            })
+            task["url"] = url
+            if path:
+                task["path"] = path
+            task["status"] = "queued"
+            self._dashboard_render()
+
+    def dashboard_start(self, task_id, url, path):
+        with self._dashboard_lock:
+            task = self._dashboard_tasks.setdefault(task_id, {
+                "path": "",
+                "url": url,
+                "status": "queued",
+                "bytes_total": None,
+                "bytes_downloaded": 0,
+                "bytes_per_second": 0,
+                "issue": "",
+            })
+            task["url"] = url
+            task["path"] = path
+            task["status"] = "running"
+            self._dashboard_render()
+
+    def dashboard_progress(self, task_id, bytes_total,
+                           bytes_downloaded, bytes_per_second):
+        with self._dashboard_lock:
+            if task := self._dashboard_tasks.get(task_id):
+                task["bytes_total"] = bytes_total
+                task["bytes_downloaded"] = bytes_downloaded
+                task["bytes_per_second"] = bytes_per_second
+                if task["status"] == "queued":
+                    task["status"] = "running"
+                self._dashboard_render()
+
+    def dashboard_issue(self, task_id, message, fatal=False):
+        with self._dashboard_lock:
+            if task := self._dashboard_tasks.get(task_id):
+                task["issue"] = message
+                task["status"] = "error" if fatal else "retry"
+                label = task["path"] or task["url"]
+            else:
+                label = str(task_id)
+            self._dashboard_issues.append((label, message))
+            self._dashboard_issues = self._dashboard_issues[
+                -DASHBOARD_ISSUE_LIMIT:]
+            if fatal:
+                self._dashboard_prune()
+            self._dashboard_render()
+
+    def dashboard_skip(self, task_id, path=None):
+        with self._dashboard_lock:
+            if task := self._dashboard_tasks.get(task_id):
+                if path:
+                    task["path"] = path
+                task["status"] = "skip"
+                self._dashboard_prune()
+                self._dashboard_render()
+
+    def dashboard_success(self, task_id, path=None):
+        with self._dashboard_lock:
+            if task := self._dashboard_tasks.get(task_id):
+                if path:
+                    task["path"] = path
+                task["status"] = "done"
+                self._dashboard_prune()
+                self._dashboard_render()
+
+    def _dashboard_prune(self):
+        completed_ids = [
+            task_id
+            for task_id, task in self._dashboard_tasks.items()
+            if task["status"] not in DASHBOARD_ACTIVE_STATES
+        ]
+        if len(completed_ids) > DASHBOARD_COMPLETED_TASK_LIMIT:
+            for task_id in completed_ids[:-DASHBOARD_COMPLETED_TASK_LIMIT]:
+                del self._dashboard_tasks[task_id]
+
+    def _dashboard_render(self):
+        active = done = failed = skipped = 0
+        lines = [
+            "gallery-dl aria2c dashboard",
+            "",
+        ]
+
+        for task in self._dashboard_tasks.values():
+            status = task["status"]
+            if status in DASHBOARD_ACTIVE_STATES:
+                active += 1
+            elif status == "done":
+                done += 1
+            elif status == "skip":
+                skipped += 1
+            elif status == "error":
+                failed += 1
+
+        lines.append(
+            f"active: {active}  done: {done}  "
+            f"skipped: {skipped}  failed: {failed}"
+        )
+        lines.append("")
+
+        for task in self._dashboard_tasks.values():
+            status = task["status"]
+            total = task["bytes_total"]
+            downloaded = task["bytes_downloaded"]
+            speed = util.format_value(task["bytes_per_second"])
+            if total:
+                percent = f"{downloaded * 100 // total:>3}%"
+            else:
+                percent = " --%"
+            label = {
+                "queued": "QUE",
+                "running": "RUN",
+                "retry" : "TRY",
+                "done"  : "DONE",
+                "skip"  : "SKIP",
+                "error" : "ERR",
+            }[status]
+            target = task["path"] or task["url"]
+            lines.append(
+                self.shorten(
+                    f"[{label}] {percent} {speed:>7}B/s {target}"))
+            lines.append(self.shorten(f"      {task['url']}"))
+            if task["issue"]:
+                lines.append(self.shorten(f"      issue: {task['issue']}"))
+
+        if self._dashboard_issues:
+            lines.extend(("", "issues:"))
+            for label, message in self._dashboard_issues[-5:]:
+                lines.append(self.shorten(f"  - {label}: {message}"))
+
+        rendered = "\n".join(lines)
+        if ANSI and TTY_STDERR:
+            stderr_write_flush("\x1b[2J\x1b[H" + rendered + "\x1b[J")
+        else:
+            stderr_write_flush(rendered + "\n")
 
 
 class ColorOutput(TerminalOutput):
@@ -534,6 +709,13 @@ class CustomOutput():
             stderr_write(self._fmt_progress_total(
                 bdl, bps, util.format_value(bytes_total),
                 bytes_downloaded * 100 // bytes_total))
+
+    dashboard_enqueue = NullOutput.dashboard_enqueue
+    dashboard_start = NullOutput.dashboard_start
+    dashboard_progress = NullOutput.dashboard_progress
+    dashboard_issue = NullOutput.dashboard_issue
+    dashboard_skip = NullOutput.dashboard_skip
+    dashboard_success = NullOutput.dashboard_success
 
 
 class EAWCache(dict):
