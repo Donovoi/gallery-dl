@@ -162,7 +162,7 @@ class TestDashboardOutput(unittest.TestCase):
         out._dashboard_used = True
 
         record = logging.LogRecord(
-            "gallery-dl", logging.ERROR, __file__, 1, "boom", (), None,
+            "gallery-dl", logging.ERROR, __file__, 1, "boom", (), None
         )
         handler = output.DashboardStreamHandler(stream=sys.stderr)
 
