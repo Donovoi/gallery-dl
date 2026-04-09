@@ -22,7 +22,10 @@ class TestDashboardOutput(unittest.TestCase):
         config.clear()
 
     @patch("gallery_dl.output.stderr_write_flush")
-    def test_dashboard_renders_active_downloads_and_hides_done_items(self, write):
+    def test_dashboard_renders_active_downloads_and_hides_done_items(
+        self,
+        write,
+    ):
         out = output.TerminalOutput()
 
         out.dashboard_enqueue(1, "https://example.org/file.jpg")
@@ -33,11 +36,20 @@ class TestDashboardOutput(unittest.TestCase):
         out.dashboard_success(1, "file.jpg")
         final_render = write.call_args_list[-1].args[0]
 
-        self.assertIn("active: 1  done: 0  skipped: 0  failed: 0", retry_render)
-        self.assertIn(" 50% [████████░░░░░░░░] file.jpg (retrying)", retry_render)
+        self.assertIn(
+            "active: 1  done: 0  skipped: 0  failed: 0",
+            retry_render,
+        )
+        self.assertIn(
+            " 50% [████████░░░░░░░░] file.jpg (retrying)",
+            retry_render,
+        )
         self.assertIn("https://example.org/file.jpg", retry_render)
 
-        self.assertIn("active: 0  done: 1  skipped: 0  failed: 0", final_render)
+        self.assertIn(
+            "active: 0  done: 1  skipped: 0  failed: 0",
+            final_render,
+        )
         self.assertNotIn("file.jpg", final_render)
         self.assertNotIn("https://example.org/file.jpg", final_render)
         self.assertNotIn("network hiccup", final_render)
