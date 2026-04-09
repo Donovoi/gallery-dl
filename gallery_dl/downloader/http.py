@@ -21,6 +21,7 @@ FLAGS = util.FLAGS
 ARIA2C_SPLIT = 16
 ARIA2C_MAX_CONCURRENT_DOWNLOADS = 16
 ARIA2C_MIN_SPLIT_SIZE = "1M"
+ARIA2C_MAX_STDERR_LENGTH = 200
 ARIA2C_POLL_INTERVAL = 0.5
 ARIA2C_POLL_FALLBACK = 0.25
 ARIA2C_EXIT_MESSAGES = {
@@ -205,7 +206,7 @@ class HttpDownloader(DownloaderBase):
     def _aria2c_error_message(self, returncode, stderr):
         stderr = stderr.decode(errors="replace").strip()
         if stderr:
-            return f"aria2c: {stderr[-200:]}"
+            return f"aria2c: {stderr[-ARIA2C_MAX_STDERR_LENGTH:]}"
 
         msg = f"aria2c: exit code {returncode}"
         if detail := ARIA2C_EXIT_MESSAGES.get(returncode):

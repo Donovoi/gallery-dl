@@ -32,7 +32,7 @@ from . import (
 from .extractor.message import Message
 stdout_write = output.stdout_write
 FLAGS = util.FLAGS
-ARIA2C_ASYNC_UNSAFE_HOOKS = {
+ARIA2C_INCOMPATIBLE_HOOKS = {
     "after",
     "error",
     "file",
@@ -767,7 +767,7 @@ class DownloadJob(Job):
         if scheme not in ("http", "https") or self._directory_kwdict is None:
             return None
         if self.hooks and any(
-                hook in self.hooks for hook in ARIA2C_ASYNC_UNSAFE_HOOKS):
+                hook in self.hooks for hook in ARIA2C_INCOMPATIBLE_HOOKS):
             return None
         instance = self._create_downloader(scheme)
         if (instance is None or

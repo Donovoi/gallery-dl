@@ -391,9 +391,10 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
             dl, pathfmt = self._prepare_aria2c_download(tmpdir)
             dl.timeout = 7
             dl.session.cookies.set(
-                "good", "1", domain="example.org", path="/")
-            dl.session.cookies.set("bad", "2", domain="invalid.example",
-                                   path="/")
+                "matching_cookie", "1", domain="example.org", path="/")
+            dl.session.cookies.set(
+                "nonmatching_cookie", "2", domain="invalid.example",
+                path="/")
 
             result = dl.download("https://example.org/file.jpg", pathfmt)
 
@@ -402,8 +403,8 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
             arg for arg in captured["cmd"]
             if arg.startswith("--header=")
         ]
-        self.assertIn("--header=Cookie: good=1", headers)
-        self.assertNotIn("--header=Cookie: bad=2", headers)
+        self.assertIn("--header=Cookie: matching_cookie=1", headers)
+        self.assertNotIn("--header=Cookie: nonmatching_cookie=2", headers)
         self.assertIn("--split=16", captured["cmd"])
         self.assertIn("--max-connection-per-server=16", captured["cmd"])
         self.assertIn("--min-split-size=1M", captured["cmd"])
