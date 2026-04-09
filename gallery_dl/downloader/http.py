@@ -348,8 +348,9 @@ class HttpDownloader(DownloaderBase):
             else:
                 self.out.dashboard_start(task_id, url, pathfmt.path)
 
+            show_progress = task_id is None and self.progress is not None
             bytes_total = self._aria2c_filesize(url, headers) \
-                if task_id is not None else None
+                if task_id is not None or show_progress else None
             poll_interval = min(
                 self.progress or ARIA2C_POLL_INTERVAL, ARIA2C_POLL_INTERVAL
             ) or ARIA2C_POLL_FALLBACK
@@ -375,6 +376,8 @@ class HttpDownloader(DownloaderBase):
                 self.downloading = False
                 if task_id is not None:
                     self.out.dashboard_issue(task_id, str(exc), True)
+                elif not self.part:
+                    self._remove_aria2c_file(pathfmt, outpath)
                 self.log.warning(exc)
                 return False
 
@@ -384,18 +387,28 @@ class HttpDownloader(DownloaderBase):
                     proc.wait()
                     return FLAGS.process("DOWNLOAD")
 
-                if task_id is not None:
+                if task_id is not None or show_progress:
                     now = time.monotonic()
                     if now - last_time >= poll_interval:
                         downloaded = pathfmt.part_size() or 0
                         elapsed = now - last_time
-                        self.out.dashboard_progress(
-                            task_id,
-                            bytes_total,
-                            downloaded,
+                        bytes_per_second = (
                             int((downloaded - last_bytes) / elapsed)
-                            if elapsed > 0 else 0,
+                            if elapsed > 0 else 0
                         )
+                        if task_id is not None:
+                            self.out.dashboard_progress(
+                                task_id,
+                                bytes_total,
+                                downloaded,
+                                bytes_per_second,
+                            )
+                        else:
+                            self.out.progress(
+                                bytes_total,
+                                downloaded,
+                                bytes_per_second,
+                            )
                         last_time = now
                         last_bytes = downloaded
 
@@ -408,6 +421,8 @@ class HttpDownloader(DownloaderBase):
                 downloaded = pathfmt.part_size() or 0
                 self.out.dashboard_progress(
                     task_id, bytes_total, downloaded, 0)
+            elif show_progress:
+                self.out.progress(bytes_total, pathfmt.part_size() or 0, 0)
 
             if proc.returncode != 0:
                 msg = self._aria2c_error_message(proc.returncode, stderr)
@@ -424,6 +439,8 @@ class HttpDownloader(DownloaderBase):
                     self.out.dashboard_issue(task_id, msg, True)
                 else:
                     output.stderr_write("\n")
+                if not self.part:
+                    self._remove_aria2c_file(pathfmt, outpath)
                 self.log.warning(msg)
                 return False
 
