@@ -61,6 +61,11 @@ else:
     CHAR_ELLIPSIES = "…"
 
 
+DASHBOARD_ACTIVE_STATES = {"queued", "running", "retry"}
+DASHBOARD_ISSUE_LIMIT = 10
+DASHBOARD_COMPLETED_TASK_LIMIT = 20
+
+
 # --------------------------------------------------------------------
 # Logging
 
@@ -529,7 +534,10 @@ class TerminalOutput():
             else:
                 label = str(task_id)
             self._dashboard_issues.append((label, message))
-            self._dashboard_issues = self._dashboard_issues[-10:]
+            self._dashboard_issues = self._dashboard_issues[
+                -DASHBOARD_ISSUE_LIMIT:]
+            if fatal:
+                self._dashboard_prune()
             self._dashboard_render()
 
     def dashboard_skip(self, task_id, path=None):
@@ -538,6 +546,7 @@ class TerminalOutput():
                 if path:
                     task["path"] = path
                 task["status"] = "skip"
+                self._dashboard_prune()
                 self._dashboard_render()
 
     def dashboard_success(self, task_id, path=None):
@@ -546,7 +555,18 @@ class TerminalOutput():
                 if path:
                     task["path"] = path
                 task["status"] = "done"
+                self._dashboard_prune()
                 self._dashboard_render()
+
+    def _dashboard_prune(self):
+        completed_ids = [
+            task_id
+            for task_id, task in self._dashboard_tasks.items()
+            if task["status"] not in DASHBOARD_ACTIVE_STATES
+        ]
+        if len(completed_ids) > DASHBOARD_COMPLETED_TASK_LIMIT:
+            for task_id in completed_ids[:-DASHBOARD_COMPLETED_TASK_LIMIT]:
+                del self._dashboard_tasks[task_id]
 
     def _dashboard_render(self):
         active = done = failed = skipped = 0
@@ -557,7 +577,7 @@ class TerminalOutput():
 
         for task in self._dashboard_tasks.values():
             status = task["status"]
-            if status in ("queued", "running", "retry"):
+            if status in DASHBOARD_ACTIVE_STATES:
                 active += 1
             elif status == "done":
                 done += 1
@@ -602,7 +622,11 @@ class TerminalOutput():
             for label, message in self._dashboard_issues[-5:]:
                 lines.append(self.shorten(f"  - {label}: {message}"))
 
-        stderr_write_flush("\x1b[2J\x1b[H" + "\n".join(lines) + "\x1b[J")
+        rendered = "\n".join(lines)
+        if ANSI and TTY_STDERR:
+            stderr_write_flush("\x1b[2J\x1b[H" + rendered + "\x1b[J")
+        else:
+            stderr_write_flush(rendered + "\n")
 
 
 class ColorOutput(TerminalOutput):

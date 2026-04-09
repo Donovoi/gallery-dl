@@ -424,10 +424,10 @@ class DownloadJob(Job):
         self.out = output.select()
         self.visited = set() if parent is None else parent.visited
         self._extractor_filter = None
-        self._skipcnt = 0
         self._archive_lock = threading.Lock()
         self._status_lock = threading.Lock()
         self._skip_lock = threading.Lock()
+        self._skipcnt = 0
         self._async_futures = []
         self._async_executor = None
         self._directory_kwdict = None
@@ -545,7 +545,8 @@ class DownloadJob(Job):
             self.out.success(pathfmt.path)
         else:
             self.out.dashboard_success(task_id, pathfmt.path)
-        self._skipcnt = 0
+        with self._skip_lock:
+            self._skipcnt = 0
         if archive is not None and self._archive_write_file:
             self._archive_add(archive, kwdict)
         if "after" in hooks:

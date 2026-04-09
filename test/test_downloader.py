@@ -342,29 +342,35 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
 
         srv = _http.HTTPServer(("127.0.0.1", 0), Handler)
         addr_holder.append(srv.server_address)
-        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        server_thread = threading.Thread(target=srv.serve_forever, daemon=True)
+        server_thread.start()
         host, port = addr_holder[0]
         url = f"http://{host}:{port}/img.jpg"
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config.set((), "base-directory", tmpdir)
-            job = FakeJob()
-            dl = downloader.find("http")(job)
-            dl._aria2c = "/nonexistent/aria2c"
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                config.set((), "base-directory", tmpdir)
+                job = FakeJob()
+                dl = downloader.find("http")(job)
+                dl._aria2c = "/nonexistent/aria2c"
 
-            kwdict = {
-                "category"   : "test",
-                "subcategory": "test",
-                "filename"   : "fallback",
-                "extension"  : "jpg",
-            }
-            pf = job.pathfmt
-            pf.set_directory(kwdict)
-            pf.set_filename(kwdict)
-            pf.build_path()
+                kwdict = {
+                    "category"   : "test",
+                    "subcategory": "test",
+                    "filename"   : "fallback",
+                    "extension"  : "jpg",
+                }
+                pf = job.pathfmt
+                pf.set_directory(kwdict)
+                pf.set_filename(kwdict)
+                pf.build_path()
 
-            with self.assertLogs(dl.log, "WARNING"):
-                result = dl.download(url, pf)
+                with self.assertLogs(dl.log, "WARNING"):
+                    result = dl.download(url, pf)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            server_thread.join()
 
         self.assertTrue(result)
         self.assertIsNone(dl._aria2c,
@@ -481,6 +487,83 @@ class TestHTTPDownloaderAria2c(unittest.TestCase):
             http_downloader.ARIA2C_EXIT_MESSAGES[32],
             "checksum validation failed",
         )
+
+    @patch.object(http_downloader.HttpDownloader, "_aria2c_filesize",
+                  return_value=100)
+    @patch.object(http_downloader.subprocess, "Popen")
+    def test_aria2c_reports_progress_without_dashboard(self, popen, _size):
+        class Process(MockAria2cProcess):
+            def __init__(self):
+                super().__init__()
+                self.calls = 0
+
+            def poll(self):
+                self.calls += 1
+                return 0 if self.calls > 1 else None
+
+        process = Process()
+
+        def side_effect(cmd, stdout, stderr):
+            outdir = next(arg[6:] for arg in cmd if arg.startswith("--dir="))
+            outfile = next(arg[6:] for arg in cmd if arg.startswith("--out="))
+            os.makedirs(outdir, exist_ok=True)
+            with open(os.path.join(outdir, outfile), "wb") as fp:
+                fp.write(DATA["jpg"])
+            return process
+
+        popen.side_effect = side_effect
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dl, pathfmt = self._prepare_aria2c_download(tmpdir)
+            dl.progress = 0.0
+
+            with patch.object(dl.out, "progress") as progress:
+                result = dl.download("https://example.org/file.jpg", pathfmt)
+
+        self.assertTrue(result)
+        self.assertGreaterEqual(progress.call_count, 1)
+
+    @patch.object(http_downloader.subprocess, "Popen",
+                  side_effect=OSError("spawn failed"))
+    def test_aria2c_spawn_error_cleans_non_part_file(self, _popen):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dl, pathfmt = self._prepare_aria2c_download(tmpdir)
+            dl.part = False
+            os.makedirs(pathfmt.realdirectory, exist_ok=True)
+            with open(pathfmt.realpath, "wb") as fp:
+                fp.write(b"partial")
+
+            with self.assertLogs(dl.log, "WARNING"):
+                result = dl.download("https://example.org/file.jpg", pathfmt)
+
+            self.assertFalse(os.path.exists(pathfmt.realpath))
+
+        self.assertFalse(result)
+
+    @patch.object(http_downloader.HttpDownloader, "_aria2c_filesize",
+                  return_value=None)
+    @patch.object(http_downloader.subprocess, "Popen")
+    def test_aria2c_failure_cleans_non_part_file(self, popen, _size):
+        def side_effect(cmd, stdout, stderr):
+            outdir = next(arg[6:] for arg in cmd if arg.startswith("--dir="))
+            outfile = next(arg[6:] for arg in cmd if arg.startswith("--out="))
+            os.makedirs(outdir, exist_ok=True)
+            with open(os.path.join(outdir, outfile), "wb") as fp:
+                fp.write(b"partial")
+            return MockAria2cProcess(returncode=22)
+
+        popen.side_effect = side_effect
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dl, pathfmt = self._prepare_aria2c_download(tmpdir)
+            dl.part = False
+
+            with self.assertLogs(dl.log, "WARNING"):
+                result = dl.download("https://example.org/file.jpg", pathfmt)
+
+            self.assertFalse(os.path.exists(pathfmt.realpath))
+
+        self.assertFalse(result)
 
 
 class TestDownloaderBase(unittest.TestCase):
