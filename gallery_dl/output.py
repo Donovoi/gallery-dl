@@ -251,9 +251,9 @@ class DashboardStreamHandler(logging.StreamHandler):
     def emit(self, record):
         logging.StreamHandler.emit(self, record)
         if out := ACTIVE_OUTPUT:
-            if not hasattr(out, "_dashboard_refresh"):
-                return
-            out._dashboard_refresh()
+            refresh = getattr(out, "_dashboard_refresh", None)
+            if refresh:
+                refresh()
 
 
 def initialize_logging(loglevel):
@@ -605,24 +605,18 @@ class TerminalOutput():
         if self._dashboard_used and ANSI and TTY_STDERR:
             self._dashboard_render()
 
+    def _dashboard_summary_item(self, icon_key, label, value):
+        style = f"summary-{label}"
+        icon = DASHBOARD_ICONS[icon_key]
+        return self._dashboard_style(f"{icon} {label}: {value}", style)
+
     def _dashboard_summary_line(self, active, done, skipped, failed):
         return "  ".join((
-            self._dashboard_style(
-                f"{DASHBOARD_ICONS['summary-active']} active: {active}",
-                "summary-active",
-            ),
-            self._dashboard_style(
-                f"{DASHBOARD_ICONS['summary-done']} done: {done}",
-                "summary-done",
-            ),
-            self._dashboard_style(
-                f"{DASHBOARD_ICONS['summary-skipped']} skipped: {skipped}",
-                "summary-skipped",
-            ),
-            self._dashboard_style(
-                f"{DASHBOARD_ICONS['summary-failed']} failed: {failed}",
-                "summary-failed",
-            ),
+            self._dashboard_summary_item("summary-active", "active", active),
+            self._dashboard_summary_item("summary-done", "done", done),
+            self._dashboard_summary_item(
+                "summary-skipped", "skipped", skipped),
+            self._dashboard_summary_item("summary-failed", "failed", failed),
         ))
 
     def _dashboard_percent(self, task):
