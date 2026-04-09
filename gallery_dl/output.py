@@ -251,8 +251,7 @@ class DashboardStreamHandler(logging.StreamHandler):
     def emit(self, record):
         logging.StreamHandler.emit(self, record)
         if out := ACTIVE_OUTPUT:
-            refresh = getattr(out, "_dashboard_refresh", None)
-            if refresh:
+            if refresh := getattr(out, "_dashboard_refresh", None):
                 refresh()
 
 
@@ -607,7 +606,7 @@ class TerminalOutput():
 
     def _dashboard_summary_item(self, icon_key, label, value):
         style = f"summary-{label}"
-        icon = DASHBOARD_ICONS[icon_key]
+        icon = DASHBOARD_ICONS.get(icon_key, ">" if util.WINDOWS else "▶")
         return self._dashboard_style(f"{icon} {label}: {value}", style)
 
     def _dashboard_summary_line(self, active, done, skipped, failed):
@@ -650,7 +649,8 @@ class TerminalOutput():
         return target
 
     def _dashboard_task_line(self, task):
-        icon = DASHBOARD_ICONS.get(task["status"], DASHBOARD_ICONS["running"])
+        icon = DASHBOARD_ICONS.get(
+            task["status"], ">" if util.WINDOWS else "▶")
         return self.shorten(
             f"{icon} {self._dashboard_percent(task)} "
             f"{self._dashboard_bar(task)} "
