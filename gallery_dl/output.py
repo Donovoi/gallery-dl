@@ -576,17 +576,12 @@ class TerminalOutput():
     def _dashboard_bar(self, task):
         total = task["bytes_total"]
         if not total:
-            return "[" + ("·" * DASHBOARD_BAR_WIDTH) + "]"
+            return "[" + ("░" * DASHBOARD_BAR_WIDTH) + "]"
         filled = min(
             DASHBOARD_BAR_WIDTH,
             task["bytes_downloaded"] * DASHBOARD_BAR_WIDTH // total,
         )
-        return (
-            "[" +
-            ("█" * filled) +
-            ("░" * (DASHBOARD_BAR_WIDTH - filled)) +
-            "]"
-        )
+        return "[" + ("█" * filled) + ("░" * (DASHBOARD_BAR_WIDTH - filled)) + "]"
 
     def _dashboard_target(self, task):
         target = task["path"] or task["url"]
@@ -627,7 +622,8 @@ class TerminalOutput():
                     self._dashboard_task_line(task),
                     f"task-{task['status']}",
                 ))
-                if url_line := self._dashboard_url_line(task):
+                url_line = self._dashboard_url_line(task)
+                if url_line:
                     lines.append(url_line)
 
         rendered = "\n".join(lines)
