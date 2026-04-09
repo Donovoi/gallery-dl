@@ -10,6 +10,7 @@
 import os
 import sys
 import unittest
+import logging
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -37,18 +38,42 @@ class TestDashboardOutput(unittest.TestCase):
         final_render = write.call_args_list[-1].args[0]
 
         self.assertIn(
-            "active: 1  done: 0  skipped: 0  failed: 0",
+            "active: 1",
             retry_render,
         )
         self.assertIn(
-            " 50% [████████░░░░░░░░] file.jpg (retrying: network hiccup)",
+            "done: 0",
+            retry_render,
+        )
+        self.assertIn(
+            "skipped: 0",
+            retry_render,
+        )
+        self.assertIn(
+            "failed: 0",
+            retry_render,
+        )
+        self.assertIn(
+            "↻  50% [████████░░░░░░░░] file.jpg (retrying: network hiccup)",
             retry_render,
         )
         self.assertIn("https://example.org/file.jpg", retry_render)
         self.assertIn("network hiccup", retry_render)
 
         self.assertIn(
-            "active: 0  done: 1  skipped: 0  failed: 0",
+            "active: 0",
+            final_render,
+        )
+        self.assertIn(
+            "done: 1",
+            final_render,
+        )
+        self.assertIn(
+            "skipped: 0",
+            final_render,
+        )
+        self.assertIn(
+            "failed: 0",
             final_render,
         )
         self.assertNotIn("file.jpg", final_render)
@@ -78,7 +103,10 @@ class TestDashboardOutput(unittest.TestCase):
             out.dashboard_enqueue(1, "https://example.org/file.jpg")
 
         rendered = "".join(call.args[0] for call in write.call_args_list)
-        self.assertIn("active: 1  done: 0  skipped: 0  failed: 0", rendered)
+        self.assertIn("active: 1", rendered)
+        self.assertIn("done: 0", rendered)
+        self.assertIn("skipped: 0", rendered)
+        self.assertIn("failed: 0", rendered)
         self.assertNotIn("\x1b[2J", rendered)
         self.assertNotIn("\x1b[J", rendered)
 
@@ -96,7 +124,10 @@ class TestDashboardOutput(unittest.TestCase):
         self.assertEqual(len(out._dashboard_tasks), 1)
         self.assertIn("active", out._dashboard_tasks)
         self.assertNotIn(0, out._dashboard_tasks)
-        self.assertIn("active: 1  done: 5  skipped: 0  failed: 0", rendered)
+        self.assertIn("active: 1", rendered)
+        self.assertIn("done: 5", rendered)
+        self.assertIn("skipped: 0", rendered)
+        self.assertIn("failed: 0", rendered)
 
     @patch("gallery_dl.output.stderr_write_flush")
     def test_dashboard_uses_color_output_styles(self, write):
@@ -109,7 +140,40 @@ class TestDashboardOutput(unittest.TestCase):
         rendered = write.call_args_list[-1].args[0]
         self.assertIn("\x1b[", rendered)
         self.assertIn("active", rendered)
-        self.assertIn(" 50% [████████░░░░░░░░] file.jpg", rendered)
+        self.assertIn("▶  50% [████████░░░░░░░░] file.jpg", rendered)
+
+    @patch("gallery_dl.output.stderr_write_flush")
+    @patch("gallery_dl.output.stdout_write")
+    def test_dashboard_refreshes_after_skip_output(self, stdout_write, write):
+        out = output.TerminalOutput()
+
+        with patch("gallery_dl.output.ANSI", True), \
+                patch("gallery_dl.output.TTY_STDERR", True):
+            out.dashboard_enqueue(1, "https://example.org/file.jpg")
+            write.reset_mock()
+            out.skip("skipped.jpg")
+
+        stdout_write.assert_called_once()
+        write.assert_called_once()
+        self.assertIn("active: 1", write.call_args.args[0])
+
+    def test_dashboard_log_handler_refreshes_active_dashboard(self):
+        out = output.TerminalOutput()
+        out._dashboard_used = True
+
+        record = logging.LogRecord(
+            "gallery-dl", logging.ERROR, __file__, 1, "boom", (), None,
+        )
+        handler = output.DashboardStreamHandler(stream=sys.stderr)
+
+        with patch("gallery_dl.output.ACTIVE_OUTPUT", out), \
+                patch("gallery_dl.output.ANSI", True), \
+                patch("gallery_dl.output.TTY_STDERR", True), \
+                patch.object(out, "_dashboard_render") as render, \
+                patch.object(logging.StreamHandler, "emit"):
+            handler.emit(record)
+
+        render.assert_called_once()
 
 
 if __name__ == "__main__":
