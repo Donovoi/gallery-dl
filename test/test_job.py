@@ -278,6 +278,56 @@ class TestDownloadJob(TestJob):
 
         self.assertEqual(captured["max_workers"], 3)
 
+    def test_aria2c_downloads_wait_for_next_batch(self):
+        config.set(("output",), "mode", False)
+        config.set(("downloader", "http"), "max-concurrent-downloads", 2)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config.set((), "base-directory", tmpdir)
+
+            extr = TestExtractor.from_url("test:")
+            tjob = self.jobclass(extr)
+
+            started = []
+            started_lock = threading.Lock()
+            first_batch_started = threading.Event()
+            release = threading.Event()
+
+            class MockAria2cDownloader():
+                _aria2c = "aria2c"
+                max_concurrent_downloads = 2
+
+                def _can_use_aria2c(self, kwdict):
+                    return True
+
+                def download(self, url, pathfmt):
+                    with started_lock:
+                        started.append(url)
+                        if len(started) >= 2:
+                            first_batch_started.set()
+                    release.wait(2.0)
+                    with pathfmt.open("wb") as fp:
+                        fp.write(b"test")
+                    return True
+
+            downloader_instance = MockAria2cDownloader()
+            runner = threading.Thread(target=tjob.run)
+
+            with patch.object(
+                    tjob, "_aria2c_async_downloader",
+                    side_effect=lambda *args: downloader_instance):
+                runner.start()
+                try:
+                    self.assertTrue(first_batch_started.wait(2.0))
+                    self.assertEqual(len(started), 2)
+                finally:
+                    release.set()
+                runner.join(2.0)
+
+            self.assertFalse(runner.is_alive())
+            self.assertEqual(len(started), 3)
+            self.assertEqual(tjob.status, 0)
+
 
 class TestKeywordJob(TestJob):
     jobclass = job.KeywordJob

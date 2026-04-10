@@ -8018,10 +8018,10 @@ downloader.http.max-concurrent-downloads
 Type
     ``integer``
 Default
-    ``16``
+    ``10``
 Description
-    Maximum number of eligible ``aria2c``-backed HTTP downloads to keep in
-    flight at the same time for a gallery.
+    Maximum number of eligible ``aria2c``-backed HTTP downloads to process at
+    the same time for a gallery.
 
     This only applies when ``downloader.http.aria2c`` is enabled.
     Downloads that must fall back to the built-in HTTP downloader remain

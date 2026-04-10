@@ -430,6 +430,7 @@ class DownloadJob(Job):
         self._skipcnt = 0
         self._async_futures = []
         self._async_executor = None
+        self._async_batch_size = 0
         self._directory_kwdict = None
 
     def handle_url(self, url, kwdict):
@@ -779,11 +780,13 @@ class DownloadJob(Job):
 
     def _submit_async_download(self, url, kwdict, downloader_instance):
         if self._async_executor is None:
+            self._async_batch_size = getattr(
+                downloader_instance,
+                "max_concurrent_downloads", 16,
+            )
             self._async_executor = concurrent.futures.ThreadPoolExecutor(
-                max_workers=getattr(
-                    downloader_instance,
-                    "max_concurrent_downloads", 16,
-                ))
+                max_workers=self._async_batch_size,
+            )
 
         pathfmt = path.PathFormat(self.extractor)
         pathfmt.set_directory(self._directory_kwdict.copy())
@@ -795,6 +798,8 @@ class DownloadJob(Job):
             self._handle_url_impl,
             url, kwdict, pathfmt, task_id, downloader_instance,
         ))
+        if len(self._async_futures) >= self._async_batch_size:
+            self._wait_pending_downloads()
 
     def _wait_pending_downloads(self):
         if not self._async_futures:
