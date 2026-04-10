@@ -492,7 +492,7 @@ class TerminalOutput():
             self.shorten = lambda txt: func(txt, limit, sep)
         else:
             self.shorten = util.identity
-        self._dashboard_lock = threading.Lock()
+        self._dashboard_lock = threading.RLock()
         self._dashboard_tasks = {}
         self._dashboard_done = 0
         self._dashboard_skipped = 0
@@ -602,7 +602,8 @@ class TerminalOutput():
 
     def _dashboard_refresh(self):
         if self._dashboard_used and ANSI and TTY_STDERR:
-            self._dashboard_render()
+            with self._dashboard_lock:
+                self._dashboard_render()
 
     def _dashboard_summary_item(self, icon_key, label, value):
         style = f"summary-{label}"
@@ -719,9 +720,11 @@ class ColorOutput(TerminalOutput):
 
     def skip(self, path):
         stdout_write(f"{self.color_skip}{self.shorten(path)}\x1b[0m\n")
+        self._dashboard_refresh()
 
     def success(self, path):
         stdout_write(f"{self.color_success}{self.shorten(path)}\x1b[0m\n")
+        self._dashboard_refresh()
 
     def _dashboard_style(self, text, style):
         color = self._dashboard_colors.get(style)
