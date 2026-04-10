@@ -62,6 +62,30 @@ else:
 
 
 DASHBOARD_BAR_WIDTH = 16
+ACTIVE_OUTPUT = None
+
+if util.WINDOWS:
+    DASHBOARD_ICONS = {
+        "summary-active": ">",
+        "summary-done": "+",
+        "summary-skipped": "~",
+        "summary-failed": "!",
+        "queued": ".",
+        "running": ">",
+        "retry": "!",
+        "error": "x",
+    }
+else:
+    DASHBOARD_ICONS = {
+        "summary-active": "▶",
+        "summary-done": "✔",
+        "summary-skipped": "↷",
+        "summary-failed": "✖",
+        "queued": "○",
+        "running": "▶",
+        "retry": "↻",
+        "error": "✖",
+    }
 
 
 # --------------------------------------------------------------------
@@ -222,6 +246,15 @@ class FileHandler(logging.StreamHandler):
         self.emit(record)
 
 
+class DashboardStreamHandler(logging.StreamHandler):
+
+    def emit(self, record):
+        logging.StreamHandler.emit(self, record)
+        if out := ACTIVE_OUTPUT:
+            if refresh := getattr(out, "_dashboard_refresh", None):
+                refresh()
+
+
 def initialize_logging(loglevel):
     """Setup basic logging functionality before configfiles have been loaded"""
     # convert levelnames to lowercase
@@ -234,7 +267,7 @@ def initialize_logging(loglevel):
 
     # setup basic logging to stderr
     formatter = Formatter(LOG_FORMAT, LOG_FORMAT_DATE)
-    handler = logging.StreamHandler()
+    handler = DashboardStreamHandler()
     handler.setFormatter(formatter)
     handler.setLevel(loglevel)
     root = logging.getLogger()
@@ -375,6 +408,7 @@ def configure_standard_streams():
 
 def select():
     """Select a suitable output class"""
+    global ACTIVE_OUTPUT
     mode = config.get(("output",), "mode")
 
     if mode is None or mode == "auto":
@@ -401,6 +435,7 @@ def select():
 
     if not config.get(("output",), "skip", True):
         output.skip = util.identity
+    ACTIVE_OUTPUT = output
     return output
 
 
@@ -457,20 +492,23 @@ class TerminalOutput():
             self.shorten = lambda txt: func(txt, limit, sep)
         else:
             self.shorten = util.identity
-        self._dashboard_lock = threading.Lock()
+        self._dashboard_lock = threading.RLock()
         self._dashboard_tasks = {}
         self._dashboard_done = 0
         self._dashboard_skipped = 0
         self._dashboard_failed = 0
+        self._dashboard_used = False
 
     def start(self, path):
         stdout_write_flush(self.shorten(f"  {path}"))
 
     def skip(self, path):
         stdout_write(f"{self.shorten(CHAR_SKIP + path)}\n")
+        self._dashboard_refresh()
 
     def success(self, path):
         stdout_write(f"\r{self.shorten(CHAR_SUCCESS + path)}\n")
+        self._dashboard_refresh()
 
     def progress(self, bytes_total, bytes_downloaded, bytes_per_second):
         bdl = util.format_value(bytes_downloaded)
@@ -483,6 +521,7 @@ class TerminalOutput():
 
     def dashboard_enqueue(self, task_id, url, path=None):
         with self._dashboard_lock:
+            self._dashboard_used = True
             task = self._dashboard_tasks.setdefault(task_id, {
                 "path": path or "",
                 "url": url,
@@ -499,6 +538,7 @@ class TerminalOutput():
 
     def dashboard_start(self, task_id, url, path):
         with self._dashboard_lock:
+            self._dashboard_used = True
             task = self._dashboard_tasks.setdefault(task_id, {
                 "path": "",
                 "url": url,
@@ -516,6 +556,7 @@ class TerminalOutput():
                            bytes_downloaded, bytes_per_second):
         del bytes_per_second
         with self._dashboard_lock:
+            self._dashboard_used = True
             if task := self._dashboard_tasks.get(task_id):
                 task["bytes_total"] = bytes_total
                 task["bytes_downloaded"] = bytes_downloaded
@@ -525,6 +566,7 @@ class TerminalOutput():
 
     def dashboard_issue(self, task_id, message, fatal=False):
         with self._dashboard_lock:
+            self._dashboard_used = True
             if task := self._dashboard_tasks.get(task_id):
                 task["issue"] = message
                 task["status"] = "error" if fatal else "retry"
@@ -537,6 +579,7 @@ class TerminalOutput():
 
     def dashboard_skip(self, task_id, path=None):
         with self._dashboard_lock:
+            self._dashboard_used = True
             if task := self._dashboard_tasks.get(task_id):
                 if path:
                     task["path"] = path
@@ -546,6 +589,7 @@ class TerminalOutput():
 
     def dashboard_success(self, task_id, path=None):
         with self._dashboard_lock:
+            self._dashboard_used = True
             if task := self._dashboard_tasks.get(task_id):
                 if path:
                     task["path"] = path
@@ -556,16 +600,23 @@ class TerminalOutput():
     def _dashboard_style(self, text, style):
         return text
 
+    def _dashboard_refresh(self):
+        if self._dashboard_used and ANSI and TTY_STDERR:
+            with self._dashboard_lock:
+                self._dashboard_render()
+
+    def _dashboard_summary_item(self, icon_key, label, value):
+        style = f"summary-{label}"
+        icon = DASHBOARD_ICONS.get(icon_key, ">" if util.WINDOWS else "▶")
+        return self._dashboard_style(f"{icon} {label}: {value}", style)
+
     def _dashboard_summary_line(self, active, done, skipped, failed):
-        return "".join((
-            self._dashboard_style("active", "summary-active"),
-            f": {active}  ",
-            self._dashboard_style("done", "summary-done"),
-            f": {done}  ",
-            self._dashboard_style("skipped", "summary-skipped"),
-            f": {skipped}  ",
-            self._dashboard_style("failed", "summary-failed"),
-            f": {failed}",
+        return "  ".join((
+            self._dashboard_summary_item("summary-active", "active", active),
+            self._dashboard_summary_item("summary-done", "done", done),
+            self._dashboard_summary_item(
+                "summary-skipped", "skipped", skipped),
+            self._dashboard_summary_item("summary-failed", "failed", failed),
         ))
 
     def _dashboard_percent(self, task):
@@ -599,8 +650,10 @@ class TerminalOutput():
         return target
 
     def _dashboard_task_line(self, task):
+        icon = DASHBOARD_ICONS.get(
+            task["status"], ">" if util.WINDOWS else "▶")
         return self.shorten(
-            f"{self._dashboard_percent(task)} "
+            f"{icon} {self._dashboard_percent(task)} "
             f"{self._dashboard_bar(task)} "
             f"{self._dashboard_target(task)}"
         )
@@ -652,12 +705,12 @@ class ColorOutput(TerminalOutput):
         self.color_skip = f"\x1b[{colors.get('skip', '2')}m"
         self.color_success = f"\r\x1b[{colors.get('success', '1;32')}m"
         self._dashboard_colors = {
-            "summary-active": f"\x1b[{colors.get('info', '1;37')}m",
+            "summary-active": f"\x1b[{colors.get('info', '1;36')}m",
             "summary-done": f"\x1b[{colors.get('success', '1;32')}m",
-            "summary-skipped": f"\x1b[{colors.get('skip', '2')}m",
+            "summary-skipped": f"\x1b[{colors.get('skip', '1;33')}m",
             "summary-failed": f"\x1b[{colors.get('error', '1;31')}m",
-            "task-queued": f"\x1b[{colors.get('info', '1;37')}m",
-            "task-running": f"\x1b[{colors.get('info', '1;37')}m",
+            "task-queued": f"\x1b[{colors.get('info', '0;37')}m",
+            "task-running": f"\x1b[{colors.get('success', '1;32')}m",
             "task-retry": f"\x1b[{colors.get('warning', '1;33')}m",
             "url": "\x1b[2m",
         }
@@ -667,9 +720,11 @@ class ColorOutput(TerminalOutput):
 
     def skip(self, path):
         stdout_write(f"{self.color_skip}{self.shorten(path)}\x1b[0m\n")
+        self._dashboard_refresh()
 
     def success(self, path):
         stdout_write(f"{self.color_success}{self.shorten(path)}\x1b[0m\n")
+        self._dashboard_refresh()
 
     def _dashboard_style(self, text, style):
         color = self._dashboard_colors.get(style)
