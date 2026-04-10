@@ -142,7 +142,7 @@ class TestDownloadJob(TestJob):
             started_two = threading.Event()
             release = threading.Event()
 
-            class MockAria2cDownloader():
+            class MockAria2cDownloader:
                 _aria2c = "aria2c"
 
                 def _can_use_aria2c(self, kwdict):
@@ -190,7 +190,7 @@ class TestDownloadJob(TestJob):
             started_two = threading.Event()
             release = threading.Event()
 
-            class MockAria2cDownloader():
+            class MockAria2cDownloader:
                 _aria2c = "aria2c"
 
                 def _can_use_aria2c(self, kwdict):
@@ -294,7 +294,7 @@ class TestDownloadJob(TestJob):
             first_batch_started = threading.Event()
             release = threading.Event()
 
-            class MockAria2cDownloader():
+            class MockAria2cDownloader:
                 _aria2c = "aria2c"
                 max_concurrent_downloads = 2
 
