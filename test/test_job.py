@@ -279,6 +279,7 @@ class TestDownloadJob(TestJob):
         self.assertEqual(captured["max_workers"], 3)
 
     def test_aria2c_downloads_wait_for_next_batch(self):
+        timeout = 2.0
         config.set(("output",), "mode", False)
         config.set(("downloader", "http"), "max-concurrent-downloads", 2)
 
@@ -305,7 +306,7 @@ class TestDownloadJob(TestJob):
                         started.append(url)
                         if len(started) >= 2:
                             first_batch_started.set()
-                    release.wait(2.0)
+                    release.wait(timeout)
                     with pathfmt.open("wb") as fp:
                         fp.write(b"test")
                     return True
@@ -318,11 +319,11 @@ class TestDownloadJob(TestJob):
                     side_effect=lambda *args: downloader_instance):
                 runner.start()
                 try:
-                    self.assertTrue(first_batch_started.wait(2.0))
+                    self.assertTrue(first_batch_started.wait(timeout))
                     self.assertEqual(len(started), 2)
                 finally:
                     release.set()
-                runner.join(2.0)
+                runner.join(timeout)
 
             self.assertFalse(runner.is_alive())
             self.assertEqual(len(started), 3)
