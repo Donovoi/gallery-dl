@@ -11,6 +11,7 @@ import os
 import sys
 import unittest
 import logging
+import threading
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -156,6 +157,50 @@ class TestDashboardOutput(unittest.TestCase):
         stdout_write.assert_called_once()
         write.assert_called_once()
         self.assertIn("active: 1", write.call_args.args[0])
+
+    @patch("gallery_dl.output.stderr_write_flush")
+    @patch("gallery_dl.output.stdout_write")
+    def test_color_dashboard_refreshes_after_skip_and_success(
+        self, stdout_write, write,
+    ):
+        out = output.ColorOutput()
+
+        with patch("gallery_dl.output.ANSI", True), \
+                patch("gallery_dl.output.TTY_STDERR", True):
+            out.dashboard_enqueue(1, "https://example.org/file.jpg")
+            write.reset_mock()
+            out.skip("skipped.jpg")
+            out.success("done.jpg")
+
+        self.assertEqual(stdout_write.call_count, 2)
+        self.assertEqual(write.call_count, 2)
+        self.assertIn("active: 1", write.call_args.args[0])
+
+    @patch("gallery_dl.output.stderr_write_flush")
+    def test_dashboard_refresh_uses_dashboard_lock(self, write):
+        out = output.TerminalOutput()
+        out._dashboard_used = True
+        started = threading.Event()
+        finished = threading.Event()
+
+        with patch("gallery_dl.output.ANSI", True), \
+                patch("gallery_dl.output.TTY_STDERR", True), \
+                out._dashboard_lock:
+            thread = threading.Thread(
+                target=lambda: (
+                    started.set(),
+                    out._dashboard_refresh(),
+                    finished.set(),
+                ),
+            )
+            thread.start()
+            started.wait(1)
+            self.assertFalse(finished.wait(0.1))
+            write.assert_not_called()
+
+        thread.join(1)
+        self.assertFalse(thread.is_alive())
+        write.assert_called_once()
 
     def test_dashboard_log_handler_refreshes_active_dashboard(self):
         out = output.TerminalOutput()
