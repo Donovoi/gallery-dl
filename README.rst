@@ -13,10 +13,20 @@ with many
 options, as well as powerful
 `file-naming capabilities <https://gdl-org.github.io/docs/formatting.html>`__.
 
+-----
 
-|pypi| |discord| |build|
+Migration
+=========
+
+| Active development has moved to `Codeberg <https://codeberg.org/mikf/gallery-dl>`__
+| (see `[Announcement] Moving to Codeberg <https://github.com/mikf/gallery-dl/issues/9374>`__ for details)
+
+-----
+
 
 .. contents::
+
+|pypi| |discord| |build|
 
 
 Dependencies
@@ -55,105 +65,23 @@ easily installed using uv_:
 
 .. code:: bash
 
-    uv tool install gallery-dl
+    python -m pip install -U gallery-dl
 
-To upgrade an existing installation, run:
-
-.. code:: bash
-
-    uv tool upgrade gallery-dl
-
-Installing the latest dev version directly from GitHub can be done with
-uv_ as well:
+Installing the latest dev version directly  from ``master``
+can be done with pip_ as well:
 
 .. code:: bash
 
-    uv tool install --from git+https://github.com/Donovoi/gallery-dl gallery-dl
+    python -m pip install -U --force-reinstall --no-deps https://codeberg.org/mikf/gallery-dl/archive/master.tar.gz
 
 
-Build from Source
------------------
+Note: Windows users should use :code:`py` instead of :code:`python`.
 
 To build *gallery-dl* from a source checkout:
 
 .. code:: bash
 
-    git clone https://github.com/Donovoi/gallery-dl.git
-    cd gallery-dl/
-    make
-    uv build
-
-This generates the auto-created man pages, shell completion files, and docs
-with :code:`make`, and then creates the source and wheel distributions in the
-``dist/`` directory.
-
-To install the project locally from the checkout instead of building release
-artifacts:
-
-.. code:: bash
-
-    uv venv
-    uv pip install --python .venv .
-
-To install the project from a source checkout together with all optional
-Python dependencies, run:
-
-.. code:: bash
-
-    uv venv && uv pip install --python .venv ".[extra,video]"
-
-This installs *gallery-dl* with its ``extra`` and ``video`` extras. If you
-prefer the existing Make target, it is equivalent to:
-
-.. code:: bash
-
-    make install-deps
-
-This installs all optional Python packages listed above, including support for
-SOCKS proxies, YAML/TOML configs, Brotli/Zstandard compression, PostgreSQL
-archives, Jinja templates, and ``yt-dlp``.
-
-To let *gallery-dl* install all optional README dependencies automatically,
-including ``aria2c``, ``ffmpeg``, and ``mkvmerge`` where supported, run:
-
-.. code:: bash
-
-    gallery-dl --install-deps
-
-This command is idempotent, skips dependencies that are already available, and
-prints progress while it installs missing items without prompting for input.
-
-To install the optional external tools together with the Python dependencies in
-one command from a source checkout, use one of these platform-specific
-commands:
-
-Debian / Ubuntu
-^^^^^^^^^^^^^^^^
-
-.. code:: bash
-
-    sudo apt-get update && sudo apt-get install -y aria2 ffmpeg mkvtoolnix && uv venv && uv pip install --python .venv ".[extra,video]"
-
-macOS / Homebrew
-^^^^^^^^^^^^^^^^
-
-.. code:: bash
-
-    brew install aria2 ffmpeg mkvtoolnix && uv venv && uv pip install --python .venv ".[extra,video]"
-
-To build a standalone executable with Nuitka, install Nuitka together
-with the optional runtime packages you want bundled and run:
-
-.. code:: bash
-
-    uv venv
-    uv pip install --python .venv nuitka requests[socks] yt-dlp[default] pyyaml
-    make
-    uv run --python .venv scripts/pyinstaller.py
-
-This writes a compiled executable to the ``dist/`` directory. On Linux
-and macOS the generated file is typically named ``gallery-dl``; on
-Windows Nuitka appends ``.exe`` automatically.
+    python -m pip install --upgrade pip setuptools wheel
 
 
 Standalone Executable
@@ -162,78 +90,16 @@ Standalone Executable
 Prebuilt releases with a Python interpreter and required Python
 packages included are available from:
 
-- Stable upstream releases from `mikf/gallery-dl
-  <https://github.com/mikf/gallery-dl/releases>`__, which currently
-  publish:
-
-  - `Windows <https://github.com/mikf/gallery-dl/releases/latest/download/gallery-dl.exe>`__
-    (Requires `Microsoft Visual C++ Redistributable Package (x64) <https://aka.ms/vs/17/release/vc_redist.x64.exe>`__)
-  - `Linux <https://github.com/mikf/gallery-dl/releases/latest/download/gallery-dl.bin>`__
-
-- Fork prereleases from `Donovoi/gallery-dl
-  <https://github.com/Donovoi/gallery-dl/releases>`__ for each push to
-  the ``master`` branch, including Nuitka standalone builds for Windows
-  x64 and x86, Linux x64 and arm64, and macOS x64 and arm64.
-
-Windows builds require the Microsoft Visual C++ Redistributable Package:
-`x64 <https://aka.ms/vs/17/release/vc_redist.x64.exe>`__ or
-`x86 <https://aka.ms/vs/17/release/vc_redist.x86.exe>`__.
-
-Run the downloaded or freshly built executable exactly like the Python
-entry point:
-
-.. code:: bash
-
-    ./gallery-dl_linux URL
-
-Downloaded fork prerelease files keep their platform label, for example
-``gallery-dl_linux``, ``gallery-dl_linux_arm64``, ``gallery-dl_macos``,
-``gallery-dl_macos_arm64``, ``gallery-dl_windows.exe``, and
-``gallery-dl_windows_x86.exe``. On Windows, run the matching ``.exe``
-from ``cmd.exe`` or PowerShell. On Linux and macOS, mark the downloaded
-file executable first with ``chmod +x ./gallery-dl_*`` and then run the
-matching file directly, or rename it to ``gallery-dl`` first.
+- `Windows <https://codeberg.org/mikf/gallery-dl/releases/download/v1.32.0/gallery-dl.exe>`__
+  (Requires `Microsoft Visual C++ Redistributable Package (x86) <https://aka.ms/vs/17/release/vc_redist.x86.exe>`__)
+- `Linux   <https://codeberg.org/mikf/gallery-dl/releases/download/v1.32.0/gallery-dl.bin>`__
 
 
 Nightly Builds
 --------------
 
-| Releases for each push to the ``master`` branch are published at
-| https://github.com/Donovoi/gallery-dl/releases
-| and include a universal ``py3-none-any`` wheel plus a source archive
-| for Python environments on 64-bit ARM mobile devices such as Samsung
-| Galaxy, Google Pixel, and similar Android hardware. If Termux reports
-| ``cannot execute: required file not found`` for ``gallery-dl_linux_arm64``,
-| use the Python package below instead of the Linux arm64 standalone
-| binary.
-
-To download the latest development version on Termux or another Android
-Python environment, install it, and run gallery-dl immediately:
-
-.. code:: bash
-
-    python3 -m pip install --user "gallery-dl @ https://github.com/Donovoi/gallery-dl/archive/refs/heads/master.zip" && python3 -m gallery_dl URL
-
-To download the latest mobile build with uv_, install it, and add
-gallery-dl to ``PATH`` for the current and future shells:
-This version avoids a shell heredoc so it can be pasted directly into
-Termux.
-
-.. code:: bash
-
-    WHEEL="$(uv run python -c 'import json, sys; from pathlib import Path; from urllib.request import urlopen, urlretrieve; releases = json.load(urlopen("https://api.github.com/repos/Donovoi/gallery-dl/releases")); asset = next((asset for release in releases if release["prerelease"] for asset in release["assets"] if asset["name"].endswith("-py3-none-any.whl")), None) or sys.exit("could not find a mobile py3-none-any wheel in the latest prerelease builds"); path = Path.home() / ".cache" / "gallery-dl" / asset["name"]; path.parent.mkdir(parents=True, exist_ok=True); urlretrieve(asset["browser_download_url"], path); print(path)')" && \
-    (uv tool uninstall gallery-dl >/dev/null 2>&1 || true) && \
-    uv tool install "$WHEEL" && \
-    BIN_DIR="$(uv tool dir --bin)" && \
-    PATH_LINE="$(printf 'export PATH="%s:$PATH"' "$BIN_DIR")" && \
-    export PATH="$BIN_DIR:$PATH" && \
-    { grep -qsF "$BIN_DIR" "$HOME/.profile" || printf '%s\n' "$PATH_LINE" >> "$HOME/.profile"; }
-
-If your shell uses a startup file other than ``~/.profile`` (for example,
-``~/.bashrc`` or ``~/.zshrc``), add the same ``export PATH=...`` line there
-instead.
-
-After that, run ``gallery-dl URL`` normally.
+| Executables built from the latest commit can be found at
+| https://github.com/gdl-org/builds/releases
 
 
 Snap
@@ -289,7 +155,7 @@ Using the Dockerfile in the repository:
 
 .. code:: bash
 
-    git clone https://github.com/Donovoi/gallery-dl.git
+    git clone https://codeberg.org/mikf/gallery-dl.git
     cd gallery-dl/
     docker build -t gallery-dl:latest .
 
