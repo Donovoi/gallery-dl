@@ -3,12 +3,7 @@ name: Executables
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 * * *"
-  push:
-    branches:
-    - master
-    tags-ignore:
-    - "*"
+    - cron: '0 0 * * *'
 
 env:
   DATE_FORMAT: "%Y.%m.%d"
@@ -25,6 +20,10 @@ jobs:
     defaults:
       run:
         shell: bash
+    outputs:
+      SHA: ${{ steps.out.outputs.SHA }}
+      MSG: ${{ steps.out.outputs.MSG }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -55,13 +54,23 @@ jobs:
           python-packages: ""
 
     steps:
-    - uses: actions/checkout@v5
+    - name: Clone repo
+      run: |
+        git clone --depth 1 --no-tags https://codeberg.org/mikf/gallery-dl.git .
 
     - name: Set up Python ${{ matrix.python-version }} ${{ matrix.architecture }}
       uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
         architecture: ${{ matrix.architecture }}
+
+    - name: Output Values
+      id: out
+      run: |
+        echo "SHA=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        echo "MSG<<EOF" >> "$GITHUB_OUTPUT"
+        printf '%s\n' "$(git show -s --format=%s HEAD)" >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"
 
     - name: Environment Variables
       run: |
@@ -204,14 +213,11 @@ jobs:
         fi
 
     - name: Body
+      env:
+        SHA: ${{ needs.build.outputs.SHA }}
+        MSG: ${{ needs.build.outputs.MSG }}
       run: |
-        cat > body.md <<EOF
-        Automated release for commit [\`${GITHUB_SHA::7}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}).
-
-        Included assets:
-        - Nuitka standalone builds for Windows, Linux, and macOS across x64, x86, and arm64 runners.
-        - Universal Python wheel and source archive for Python-based 64-bit ARM mobile environments such as Samsung Galaxy and Google Pixel devices.
-        EOF
+        printf '[`%s`](https://codeberg.org/mikf/gallery-dl/commit/%s) %s' "${SHA::8}" "$SHA" "$MSG" > body.md
 
     - uses: ncipollo/release-action@v1
       with:
